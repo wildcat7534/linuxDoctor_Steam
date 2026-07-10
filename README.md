@@ -4,7 +4,7 @@ Outil local de diagnostic Linux qui associe une alerte à son explication : pas 
 
 ## État actuel
 
-Le premier jalon fournit un exécutable C17 qui analyse la capacité de la partition racine et génère un rapport JSON. Le frontend est autonome : il lit ce fichier et ne contient aucune logique de diagnostic. Aucune connexion réseau n'est effectuée par le backend.
+Le premier jalon fournit un exécutable C17 qui analyse la capacité de la partition racine et génère un rapport JSON. Le frontend est autonome : il lit ce fichier et ne contient aucune logique de diagnostic. Aucune connexion réseau n'est effectuée par le backend. Avec `--history`, les 30 dernières analyses sont conservées localement et comparées.
 
 ## Lancer
 
@@ -15,6 +15,8 @@ make run
 ```
 
 Le rapport est écrit dans `frontend/report.json`. Pour le consulter via le frontend, lancez `scripts/serve.sh`, puis ouvrez `http://127.0.0.1:4545`.
+
+`make run` active l'historique local. Le premier lancement initialise le suivi ; le second affichera une comparaison dans le tableau de bord.
 
 Les vérifications sont lancées avec `make test`.
 

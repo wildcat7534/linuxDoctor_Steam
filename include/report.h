@@ -4,7 +4,8 @@
 #include <stdio.h>
 
 #include "storage.h"
+#include "history.h"
 
-int report_write(FILE *stream, const StorageInfo *storage);
+int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparison *history);
 
 #endif

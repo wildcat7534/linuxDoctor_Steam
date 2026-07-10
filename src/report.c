@@ -48,7 +48,18 @@ static int write_storage_diagnostic(FILE *stream, const StorageInfo *storage)
         stream) == EOF ? -1 : 0;
 }
 
-int report_write(FILE *stream, const StorageInfo *storage)
+static int write_history(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
+{
+    if (history == NULL || !history->enabled) return fputs("\"history\":{\"enabled\":false}", stream) == EOF ? -1 : 0;
+    if (!history->has_previous) return fputs("\"history\":{\"enabled\":true,\"has_previous\":false}", stream) == EOF ? -1 : 0;
+    return fprintf(stream,
+        "\"history\":{\"enabled\":true,\"has_previous\":true,\"previous_score\":%d,\"score_delta\":%d,"
+        "\"storage_root\":{\"previous_used_percent\":%u,\"current_used_percent\":%u}}",
+        history->previous_score, score_for(severity_for(storage)) - history->previous_score,
+        history->previous_used_percent, storage->used_percent) < 0 ? -1 : 0;
+}
+
+int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
 {
     const char *severity;
     int score;
@@ -58,7 +69,8 @@ int report_write(FILE *stream, const StorageInfo *storage)
     score = score_for(severity);
     if (fprintf(stream, "{\n  \"schema_version\": 1,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
         json_write_string(stream, severity) != 0 ||
-        fputs("},\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
+        fputs("},\n  ", stream) == EOF || write_history(stream, storage, history) != 0 ||
+        fputs(",\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
         write_storage_diagnostic(stream, storage) != 0 ||

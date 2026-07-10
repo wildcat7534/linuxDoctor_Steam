@@ -36,7 +36,7 @@ Le rapport courant peut exposer un bloc `history` qui contient uniquement les co
 
 ## Rétention initiale
 
-Conserver les 30 derniers snapshots détaillés. Au-delà, remplacer les données quotidiennes par un résumé mensuel : score min/max, derniers états des diagnostics et quelques mesures agrégées. Cette politique donne une courbe utile sans accumulation infinie de données locales.
+La première implémentation conserve les 30 derniers snapshots détaillés et remplace le plus ancien lorsque cette limite est atteinte. Une future évolution pourra remplacer les données quotidiennes plus anciennes par un résumé mensuel : score min/max, derniers états des diagnostics et quelques mesures agrégées.
 
 ## Cas à traiter avant implémentation
 

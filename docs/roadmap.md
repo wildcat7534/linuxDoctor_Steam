@@ -16,6 +16,14 @@ Cette feuille de route décrit un ordre de livraison, pas une date contractuelle
 - Alertes accompagnées de preuves, recommandations et bouton **Pourquoi ?**.
 - Export JSON et rapport HTML autonome.
 
+## 1.5 — Tableau de bord et suivi local
+
+- Navigation par catégories et page dédiée pour chaque domaine.
+- Résumé d'accueil : dernière analyse, score, problèmes, avertissements et vérifications réussies.
+- Section « Tout fonctionne correctement » pour les signaux positifs utiles.
+- Historique local opt-in : évolution du score, changements importants et diagnostics résolus ou apparus.
+- Bouton « Analyser maintenant », avec progression et rafraîchissement du rapport à la fin.
+
 ## 2 — Poste Linux moderne
 
 - Graphics/Desktop : pilotes, Vulkan, OpenGL, Wayland/X11, VRR/HDR lorsque détectables.
@@ -25,7 +33,7 @@ Cette feuille de route décrit un ordre de livraison, pas une date contractuelle
 ## 3 — Écosystème et expertise
 
 - Plugins NVIDIA, Docker, Ollama/IA, WireGuard, NFS/SMB et distributions ciblées.
-- Rapports PDF, comparaison de rapports et historique local optionnel.
+- Rapports PDF, comparaison de rapports et historique local enrichi.
 - Traductions et contenu pédagogique enrichi.
 
 ## Critères de sortie pour chaque diagnostic

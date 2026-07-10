@@ -2,6 +2,8 @@
 
 Linux Doctor est un outil de diagnostic Linux local, rapide et agréable à consulter. Il ne se contente pas d'exposer des données système : il les interprète, priorise les problèmes et explique leurs conséquences dans un langage clair.
 
+Il devient aussi, si la personne le souhaite, un compagnon de santé local : les analyses successives permettent de voir les progrès, les régressions et les changements importants de la machine.
+
 ## Promesse
 
 Répondre à trois questions, pour chaque machine :
@@ -19,6 +21,7 @@ L'application est donc à la fois un tableau de bord de diagnostic, un assistant
 - **Utile avant tout** : privilégier les conclusions et actions aux inventaires interminables.
 - **Accessible sans être simpliste** : une lecture immédiate pour débuter, des détails vérifiables pour les personnes avancées.
 - **Transparent** : chaque diagnostic indique les faits observés et les limites éventuelles.
+- **Évolutif dans le temps** : l'historique explique ce qui a changé depuis la dernière analyse plutôt que de juxtaposer des scores.
 - **Extensible** : les domaines sont fournis par des plugins indépendants.
 - **Sobre** : C17 et API POSIX/Linux pour le moteur, HTML/CSS/JavaScript sans framework lourd ni Electron.
 

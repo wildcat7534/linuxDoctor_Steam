@@ -23,6 +23,7 @@ Le backend est un outil CLI, par exemple `linux-doctor --output report.json`. Le
 | Moteur de règles | Transforme des observations factuelles en diagnostics, sévérités et recommandations. |
 | Rapport JSON | Contrat stable entre backend, interface et exports. |
 | Interface web | Lit le fichier JSON, présente les filtres, détails techniques et panneaux pédagogiques. Elle ne diagnostique pas. |
+| Historique local | Snapshots normalisés et résumés de changements, conservés uniquement sur la machine. |
 
 ## Contrat de diagnostic
 
@@ -45,6 +46,14 @@ Chaque diagnostic doit contenir au minimum :
 ```
 
 `id` est stable et sert aux liens, tests, traductions et explications. Les valeurs brutes restent distinctes des textes affichés. Un diagnostic inconnu ou incomplet doit l'indiquer au lieu d'inférer un état sain.
+
+## Historique local
+
+L'historique est activé explicitement. Le backend compare l'analyse courante à la dernière analyse compatible et ajoute un résumé de différences au rapport : score, sévérités, valeurs suivies et diagnostics apparus ou résolus. Le frontend affiche ces données, mais ne calcule pas les diagnostics lui-même.
+
+Les snapshots sont conservés sous le répertoire d'état XDG (`$XDG_STATE_HOME/linux-doctor`, ou `~/.local/state/linux-doctor`). Ils ne contiennent ni chemins personnels, ni secrets, ni inventaire détaillé inutile. La première version doit proposer une rétention simple et visible : 30 analyses récentes, puis une agrégation mensuelle. La suppression complète de l'historique doit être possible sans privilège.
+
+Un historique est utile seulement si la comparaison est fiable : une modification de schéma, de machine ou de règle doit être signalée comme telle, jamais présentée comme une régression système.
 
 ## Sécurité et confidentialité
 

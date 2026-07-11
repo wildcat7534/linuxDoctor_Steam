@@ -110,6 +110,65 @@ static int write_gaming_diagnostic(FILE *stream)
         fputs("}", stream) == EOF ? -1 : 0;
 }
 
+static const char *updates_severity(const UpdatesInfo *updates)
+{
+    if (!updates->available) return "unknown";
+    if (updates->age_days > 30U) return "problem";
+    if (updates->age_days > 7U) return "warning";
+    return "ok";
+}
+
+static int write_updates_diagnostic(FILE *stream, const UpdatesInfo *updates)
+{
+    const char *severity = updates_severity(updates);
+    const char *title;
+    const char *summary;
+    const char *observed;
+    const char *impact;
+    const char *next_step;
+
+    if (!updates->available) {
+        title = "État des mises à jour indisponible";
+        summary = "Le cache APT n'a pas pu être lu localement.";
+        observed = "Aucun horodatage du cache APT n'est accessible sur cette machine.";
+        impact = "Linux Doctor ne peut pas estimer si la liste des paquets est récente.";
+        next_step = "Actualisez les informations de paquets avec votre gestionnaire habituel, puis relancez l'analyse.";
+    } else if (updates->age_days > 30U) {
+        title = "Informations de mises à jour très anciennes";
+        summary = "Le cache APT n'a pas été actualisé depuis plus de 30 jours.";
+        observed = "La dernière actualisation locale des paquets date de plus de 30 jours.";
+        impact = "Des correctifs de sécurité et de stabilité peuvent ne pas être visibles.";
+        next_step = "Actualisez la liste des paquets, examinez les mises à jour proposées, puis installez celles que vous validez.";
+    } else if (updates->age_days > 7U) {
+        title = "Informations de mises à jour à actualiser";
+        summary = "Le cache APT date de plus de 7 jours.";
+        observed = "La dernière actualisation locale des paquets date de plus d'une semaine.";
+        impact = "Les mises à jour récemment publiées risquent de ne pas encore être proposées.";
+        next_step = "Actualisez la liste des paquets et examinez les mises à jour proposées.";
+    } else {
+        title = "Informations de mises à jour récentes";
+        summary = "Le cache APT a été actualisé récemment.";
+        observed = "La dernière actualisation locale des paquets est récente.";
+        impact = "Linux Doctor peut consulter un état local récent, sans affirmer que tous les correctifs sont installés.";
+        next_step = "Continuez à examiner régulièrement les mises à jour proposées.";
+    }
+    if (fprintf(stream, "{\"id\":\"updates.apt.cache_age\",\"severity\":") < 0 ||
+        json_write_string(stream, severity) != 0 || fputs(",\"title\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs(",\"evidence\":[", stream) == EOF) return -1;
+    if (updates->available) {
+        if (fprintf(stream, "{\"label\":\"Âge du cache APT\",\"value\":\"%u jour%s\"}",
+            updates->age_days, updates->age_days > 1U ? "s" : "") < 0) return -1;
+    } else if (fputs("{\"label\":\"Source\",\"value\":\"cache APT inaccessible\"}", stream) == EOF) return -1;
+    return fputs(
+        "],\"recommendations\":[{\"label\":\"Actualiser les informations de paquets\",\"priority\":\"medium\"}],"
+        "\"explanation\":{\"observed\":", stream) == EOF || json_write_string(stream, observed) != 0 ||
+        fputs(",\"why\":\"Un cache de paquets récent permet de voir les mises à jour disponibles sans que Linux Doctor ne contacte Internet.\",", stream) == EOF ||
+        fputs("\"impact\":", stream) == EOF || json_write_string(stream, impact) != 0 ||
+        fputs(",\"next_step\":", stream) == EOF || json_write_string(stream, next_step) != 0 ||
+        fputs("},\"summary\":", stream) == EOF || json_write_string(stream, summary) != 0 ||
+        fputs("}", stream) == EOF ? -1 : 0;
+}
+
 static int write_history(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
 {
     if (history == NULL || !history->enabled) return fputs("\"history\":{\"enabled\":false}", stream) == EOF ? -1 : 0;
@@ -121,13 +180,14 @@ static int write_history(FILE *stream, const StorageInfo *storage, const History
         history->previous_used_percent, storage->used_percent) < 0 ? -1 : 0;
 }
 
-int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
+int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
+    const HistoryComparison *history)
 {
     const char *severity;
     const bool steam_devices = steam_devices_installed();
     int score;
 
-    if (stream == NULL || storage == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
     if (fprintf(stream, "{\n  \"schema_version\": 1,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
@@ -143,6 +203,12 @@ int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparis
         fprintf(stream, "%d", steam_devices ? 95 : 60) < 0 ||
         fputs(",\"diagnostics\":[", stream) == EOF ||
         write_gaming_diagnostic(stream) != 0 ||
+        fputs("]},{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
+        json_write_string(stream, updates_severity(updates)) != 0 ||
+        fputs(",\"score\":", stream) == EOF ||
+        fprintf(stream, "%d", !updates->available ? 0 : updates->age_days > 30U ? 45 : updates->age_days > 7U ? 75 : 100) < 0 ||
+        fputs(",\"diagnostics\":[", stream) == EOF ||
+        write_updates_diagnostic(stream, updates) != 0 ||
         fputs("]}]\n}\n", stream) == EOF) return -1;
     return ferror(stream) ? -1 : 0;
 }

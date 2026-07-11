@@ -1,7 +1,7 @@
 CC := cc
 CFLAGS := -std=c17 -Wall -Wextra -Werror -Wpedantic -Iinclude
 BUILD_DIR := build
-SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c
+SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c
 TARGET := $(BUILD_DIR)/linux-doctor
 
 .PHONY: all clean test run
@@ -21,7 +21,9 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_json
 	$(CC) $(CFLAGS) tests/test_history.c src/history.c -o $(BUILD_DIR)/test_history
 	$(BUILD_DIR)/test_history
-	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c -o $(BUILD_DIR)/test_report
+	$(CC) $(CFLAGS) tests/test_updates.c src/updates.c -o $(BUILD_DIR)/test_updates
+	$(BUILD_DIR)/test_updates
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c -o $(BUILD_DIR)/test_report
 	$(BUILD_DIR)/test_report
 
 run: $(TARGET)

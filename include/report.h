@@ -5,7 +5,9 @@
 
 #include "storage.h"
 #include "history.h"
+#include "updates.h"
 
-int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparison *history);
+int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
+    const HistoryComparison *history);
 
 #endif

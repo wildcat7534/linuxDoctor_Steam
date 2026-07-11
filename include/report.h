@@ -6,8 +6,9 @@
 #include "storage.h"
 #include "history.h"
 #include "updates.h"
+#include "steam.h"
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
-    const HistoryComparison *history);
+    const SteamInfo *steam, const HistoryComparison *history);
 
 #endif

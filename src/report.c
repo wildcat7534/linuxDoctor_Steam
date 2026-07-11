@@ -5,32 +5,6 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-
-static bool steam_devices_installed(void)
-{
-    FILE *stream = fopen("/var/lib/dpkg/status", "r");
-    char line[512];
-    bool in_package = false;
-
-    if (stream == NULL) {
-        return false;
-    }
-    while (fgets(line, sizeof(line), stream) != NULL) {
-        if (strncmp(line, "Package: ", 9) == 0) {
-            in_package = strcmp(line + 9, "steam-devices\n") == 0;
-        } else if (in_package && strncmp(line, "Status: ", 8) == 0) {
-            if (strstr(line, "install ok installed") != NULL) {
-                (void)fclose(stream);
-                return true;
-            }
-        } else if (line[0] == '\n' && in_package) {
-            break;
-        }
-    }
-    (void)fclose(stream);
-    return false;
-}
 
 static const char *severity_for(const StorageInfo *storage)
 {
@@ -126,9 +100,9 @@ static int write_other_storage_diagnostic(FILE *stream, const StorageInfo *stora
         fputs("}", stream) == EOF ? -1 : 0;
 }
 
-static int write_gaming_diagnostic(FILE *stream)
+static int write_gaming_diagnostic(FILE *stream, const SteamInfo *steam)
 {
-    const bool installed = steam_devices_installed();
+    const bool installed = steam->steam_devices_installed;
     const char *severity = installed ? "ok" : "warning";
     const char *title = installed ? "steam-devices installé" : "steam-devices absent";
     const char *summary = installed
@@ -158,6 +132,43 @@ static int write_gaming_diagnostic(FILE *stream)
         fputs(",\"next_step\":", stream) == EOF || json_write_string(stream, next_step) != 0 ||
         fputs("},\"summary\":", stream) == EOF || json_write_string(stream, summary) != 0 ||
         fputs("}", stream) == EOF ? -1 : 0;
+}
+
+static int write_controller_diagnostic(FILE *stream, const SteamInfo *steam)
+{
+    const char *severity = steam->controller_detected ? "ok" : "info";
+    const char *title = steam->controller_detected ? "Steam Controller détectée" : "Aucune Steam Controller connectée";
+    const char *summary = steam->controller_detected
+        ? "La manette est visible par le noyau Linux." : "Branchez ou connectez la manette pour vérifier sa détection.";
+
+    if (fputs("{\"id\":\"steam.controller.detected\",\"severity\":", stream) == EOF ||
+        json_write_string(stream, severity) != 0 || fputs(",\"title\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs(",\"evidence\":[{\"label\":\"Noyau Linux\",\"value\":", stream) == EOF ||
+        json_write_string(stream, steam->controller_detected ? steam->controller_name : "Aucune Steam Controller détectée") != 0 ||
+        fputs("}],\"recommendations\":[{\"label\":\"Utiliser le test d'entrée dans les réglages Steam lorsque la manette est connectée\",\"priority\":\"medium\"}],\"explanation\":{\"observed\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 ||
+        fputs(",\"why\":\"La détection par le noyau est la première étape ; Steam Input et le jeu peuvent ensuite utiliser des règles et profils différents.\",\"impact\":\"Une manette absente du noyau ne peut pas être configurée dans Steam.\",\"next_step\":\"Vérifiez la connexion USB ou sans fil, puis lancez le test d'entrée Steam.\"},\"summary\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 || fputs("}", stream) == EOF) return -1;
+    return 0;
+}
+
+static int write_ubuntu_diagnostic(FILE *stream, const SteamInfo *steam)
+{
+    const char *severity = !steam->ubuntu ? "unknown" : steam->ubuntu_2604 && !steam->i386_available ? "warning" : "ok";
+    const char *title = !steam->ubuntu ? "Distribution Ubuntu non détectée" : steam->ubuntu_2604 && !steam->i386_available
+        ? "Prise en charge i386 à activer pour Steam" : "Pré-requis Ubuntu pour Steam détectés";
+    const char *summary = steam->ubuntu_2604 && !steam->i386_available
+        ? "Steam et certains pilotes graphiques ont besoin des bibliothèques 32 bits." : "La version Ubuntu et l'architecture i386 sont vérifiées localement.";
+
+    if (fputs("{\"id\":\"steam.ubuntu.runtime\",\"severity\":", stream) == EOF || json_write_string(stream, severity) != 0 ||
+        fputs(",\"title\":", stream) == EOF || json_write_string(stream, title) != 0 || fputs(",\"evidence\":[{\"label\":\"Ubuntu\",\"value\":", stream) == EOF ||
+        json_write_string(stream, steam->ubuntu ? steam->ubuntu_version : "non détectée") != 0 ||
+        fputs("},{\"label\":\"Architecture i386\",\"value\":", stream) == EOF || json_write_string(stream, steam->i386_available ? "activée" : "absente ou non détectée") != 0 ||
+        fputs("}],\"recommendations\":[{\"label\":\"Installer les bibliothèques graphiques i386 correspondant au pilote si Steam les signale manquantes\",\"priority\":\"high\"}],\"explanation\":{\"observed\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 ||
+        fputs(",\"why\":\"Le client Steam et certains composants de rendu ont encore besoin de bibliothèques 32 bits sur Ubuntu.\",\"impact\":\"Des dépendances i386 manquantes peuvent empêcher Steam ou Vulkan de démarrer correctement.\",\"next_step\":\"Sur Ubuntu 26.04, conservez les pilotes graphiques et leurs paquets i386 synchronisés ; n'acceptez pas une résolution de paquets qui supprimerait le pilote.\"},\"summary\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 || fputs("}", stream) == EOF) return -1;
+    return 0;
 }
 
 static const char *updates_severity(const UpdatesInfo *updates)
@@ -231,13 +242,12 @@ static int write_history(FILE *stream, const StorageInfo *storage, const History
 }
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
-    const HistoryComparison *history)
+    const SteamInfo *steam, const HistoryComparison *history)
 {
     const char *severity;
-    const bool steam_devices = steam_devices_installed();
     int score;
 
-    if (stream == NULL || storage == NULL || updates == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
     if (fprintf(stream, "{\n  \"schema_version\": 1,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
@@ -250,13 +260,16 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         fputc(',', stream) == EOF || write_steamapps_diagnostic(stream, storage) != 0 ||
         fputc(',', stream) == EOF || write_other_storage_diagnostic(stream, storage) != 0 ||
         fputs("],\"summary\":\"Capacité de la partition système et espace libre.\"},{\"id\":\"steam\",\"name\":\"Steam & contrôleurs\",\"status\":", stream) == EOF ||
-        json_write_string(stream, steam_devices ? "ok" : "warning") != 0 ||
+        json_write_string(stream, steam->steam_devices_installed && (!steam->ubuntu_2604 || steam->i386_available) ? "ok" : "warning") != 0 ||
         fputs(",\"score\":", stream) == EOF ||
-        fprintf(stream, "%d", steam_devices ? 95 : 60) < 0 ||
+        fprintf(stream, "%d", steam->steam_devices_installed && (!steam->ubuntu_2604 || steam->i386_available) ? 95 : 60) < 0 ||
         fputs(",\"diagnostics\":[", stream) == EOF ||
-        write_gaming_diagnostic(stream) != 0 ||
+        write_gaming_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
+        write_controller_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
+        write_ubuntu_diagnostic(stream, steam) != 0 ||
         fputs("],\"summary\":", stream) == EOF ||
-        json_write_string(stream, steam_devices ? "Règles des contrôleurs Steam installées." : "Règles des contrôleurs Steam absentes.") != 0 ||
+        json_write_string(stream, steam->controller_detected ? "Steam Controller détectée et environnement Steam vérifié."
+            : "Règles Steam et compatibilité Ubuntu vérifiées.") != 0 ||
         fputs("},{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
         json_write_string(stream, updates_severity(updates)) != 0 ||
         fputs(",\"score\":", stream) == EOF ||

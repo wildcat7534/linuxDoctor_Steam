@@ -1,3 +1,117 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Linux Doctor</title><link rel="stylesheet" href="styles.css"></head>
-<body><main><header><p>Diagnostic local</p><h1>Linux Doctor</h1><small>Votre compagnon de santé système</small></header><section class="hero"><div><p>État général</p><strong id="score">—</strong><span>/ 100</span><p id="summary">Analyse en cours…</p></div><div id="counts" class="counts"></div></section><section id="history" class="history" hidden><p class="label">Évolution</p><h2>Depuis votre dernière analyse</h2><p id="history-message"></p><div class="bar"><i id="previous-marker"></i><b id="current-marker"></b></div><small id="history-values"></small></section><section><p class="label">À examiner</p><h2>Diagnostics</h2><div id="diagnostics" aria-live="polite">Chargement du rapport…</div></section></main><dialog id="why"><button aria-label="Fermer">×</button><h2>Pourquoi ?</h2><dl></dl></dialog><template><article><span class="severity"></span><div><h3></h3><p class="evidence"></p><p class="recommendation"></p><button>Pourquoi ?</button></div></article></template><script src="app.js"></script></body></html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <title>Linux Doctor</title>
+  <link rel="stylesheet" href="styles.css?v=20260711-3">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <p class="eyebrow">Diagnostic local</p>
+      <h1>Linux Doctor</h1>
+      <small>Votre compagnon de santé système</small>
+    </header>
+
+    <section class="panel hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Résumé</p>
+        <h2 id="greeting">Bonjour</h2>
+        <p id="last-analysis" class="muted">Analyse en cours…</p>
+        <p id="overview" class="overview">Chargement du rapport…</p>
+        <div id="counts" class="counts"></div>
+      </div>
+      <div class="hero-actions">
+        <div id="score-ring" class="score-ring"><strong id="score">—</strong><span>/ 100</span></div>
+        <button id="analyze" class="primary">Analyser maintenant</button>
+        <div id="analysis-progress" class="analysis-progress" hidden><span></span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Catégories</p>
+          <h2>Navigation par domaine</h2>
+        </div>
+        <p class="muted">Cliquez une catégorie pour voir ses diagnostics.</p>
+      </div>
+      <div id="categories" class="category-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Détails</p>
+          <h2 id="selected-category-title">Diagnostics</h2>
+        </div>
+        <p id="selected-category-summary" class="muted"></p>
+      </div>
+      <div id="diagnostics" class="diagnostic-list" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Bonnes nouvelles</p>
+          <h2>Tout fonctionne correctement</h2>
+        </div>
+        <p class="muted">Ce qui est déjà en place mérite aussi d'être mis en valeur.</p>
+      </div>
+      <div id="good-news" class="good-news"></div>
+    </section>
+
+    <section id="history" class="panel history" hidden>
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Historique</p>
+          <h2>Depuis votre dernière analyse</h2>
+        </div>
+      </div>
+      <p id="history-message"></p>
+      <div class="history-bar">
+        <i id="previous-marker"></i>
+        <b id="current-marker"></b>
+      </div>
+      <small id="history-values"></small>
+      <div id="history-changes" class="history-changes"></div>
+    </section>
+  </main>
+
+  <dialog id="insight-dialog">
+    <form method="dialog" class="dialog-close">
+      <button aria-label="Fermer">×</button>
+    </form>
+    <p id="dialog-mode" class="eyebrow"></p>
+    <h2 id="dialog-title"></h2>
+    <p id="dialog-summary" class="muted"></p>
+    <div class="dialog-grid">
+      <section>
+        <h3>Observé</h3>
+        <p id="dialog-observed"></p>
+      </section>
+      <section>
+        <h3>Pourquoi ?</h3>
+        <p id="dialog-why"></p>
+      </section>
+      <section>
+        <h3>Impact</h3>
+        <p id="dialog-impact"></p>
+      </section>
+      <section>
+        <h3>Comment réparer</h3>
+        <p id="dialog-next-step"></p>
+      </section>
+    </div>
+    <section class="dialog-actions">
+      <h3>Actions</h3>
+      <ul id="dialog-actions-list"></ul>
+    </section>
+  </dialog>
+
+  <script src="app.js?v=20260711-3"></script>
+</body>
+</html>

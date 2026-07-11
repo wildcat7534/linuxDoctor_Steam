@@ -3,6 +3,34 @@
 #include "json.h"
 
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+static bool steam_devices_installed(void)
+{
+    FILE *stream = fopen("/var/lib/dpkg/status", "r");
+    char line[512];
+    bool in_package = false;
+
+    if (stream == NULL) {
+        return false;
+    }
+    while (fgets(line, sizeof(line), stream) != NULL) {
+        if (strncmp(line, "Package: ", 9) == 0) {
+            in_package = strcmp(line + 9, "steam-devices\n") == 0;
+        } else if (in_package && strncmp(line, "Status: ", 8) == 0) {
+            if (strstr(line, "install ok installed") != NULL) {
+                (void)fclose(stream);
+                return true;
+            }
+        } else if (line[0] == '\n' && in_package) {
+            break;
+        }
+    }
+    (void)fclose(stream);
+    return false;
+}
 
 static const char *severity_for(const StorageInfo *storage)
 {
@@ -48,6 +76,40 @@ static int write_storage_diagnostic(FILE *stream, const StorageInfo *storage)
         stream) == EOF ? -1 : 0;
 }
 
+static int write_gaming_diagnostic(FILE *stream)
+{
+    const bool installed = steam_devices_installed();
+    const char *severity = installed ? "ok" : "warning";
+    const char *title = installed ? "steam-devices installé" : "steam-devices absent";
+    const char *summary = installed
+        ? "Les règles manettes Steam sont installées."
+        : "Le paquet steam-devices n'est pas détecté.";
+    const char *observed = installed
+        ? "Le paquet steam-devices est installé localement."
+        : "Le paquet steam-devices n'a pas été trouvé dans dpkg.";
+    const char *impact = installed
+        ? "Les nouvelles manettes Steam ont de meilleures chances de fonctionner immédiatement sous Ubuntu 26.04."
+        : "Les nouvelles manettes Steam peuvent manquer de règles udev et de permissions adaptées.";
+    const char *next_step = installed
+        ? "Aucune action requise."
+        : "Installez steam-devices puis reconnectez la manette Steam.";
+
+    if (fprintf(stream, "{\"id\":\"gaming.steam.devices\",\"severity\":") < 0 ||
+        json_write_string(stream, severity) != 0 ||
+        fputs(",\"title\":", stream) == EOF || json_write_string(stream, title) != 0 ||
+        fputs(",\"evidence\":[", stream) == EOF) return -1;
+    if (fprintf(stream, "{\"label\":\"Paquet\",\"value\":\"steam-devices\"},") < 0 ||
+        fprintf(stream, "{\"label\":\"État\",\"value\":\"%s\"}", installed ? "installé" : "absent") < 0) return -1;
+    return fputs(
+        "],\"recommendations\":[{\"label\":\"Installer steam-devices pour les nouvelles manettes Steam\",\"priority\":\"high\"}],"
+        "\"explanation\":{\"observed\":", stream) == EOF || json_write_string(stream, observed) != 0 ||
+        fputs(",\"why\":\"steam-devices fournit les règles et permissions nécessaires pour les nouvelles manettes Steam sous Ubuntu.\",", stream) == EOF ||
+        fputs("\"impact\":", stream) == EOF || json_write_string(stream, impact) != 0 ||
+        fputs(",\"next_step\":", stream) == EOF || json_write_string(stream, next_step) != 0 ||
+        fputs("},\"summary\":", stream) == EOF || json_write_string(stream, summary) != 0 ||
+        fputs("}", stream) == EOF ? -1 : 0;
+}
+
 static int write_history(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
 {
     if (history == NULL || !history->enabled) return fputs("\"history\":{\"enabled\":false}", stream) == EOF ? -1 : 0;
@@ -62,6 +124,7 @@ static int write_history(FILE *stream, const StorageInfo *storage, const History
 int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
 {
     const char *severity;
+    const bool steam_devices = steam_devices_installed();
     int score;
 
     if (stream == NULL || storage == NULL) return -1;
@@ -74,6 +137,12 @@ int report_write(FILE *stream, const StorageInfo *storage, const HistoryComparis
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
         write_storage_diagnostic(stream, storage) != 0 ||
+        fputs("]},{\"id\":\"gaming\",\"name\":\"Gaming\",\"status\":", stream) == EOF ||
+        json_write_string(stream, steam_devices ? "ok" : "warning") != 0 ||
+        fputs(",\"score\":", stream) == EOF ||
+        fprintf(stream, "%d", steam_devices ? 95 : 60) < 0 ||
+        fputs(",\"diagnostics\":[", stream) == EOF ||
+        write_gaming_diagnostic(stream) != 0 ||
         fputs("]}]\n}\n", stream) == EOF) return -1;
     return ferror(stream) ? -1 : 0;
 }

@@ -21,6 +21,8 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_json
 	$(CC) $(CFLAGS) tests/test_history.c src/history.c -o $(BUILD_DIR)/test_history
 	$(BUILD_DIR)/test_history
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c -o $(BUILD_DIR)/test_report
+	$(BUILD_DIR)/test_report
 
 run: $(TARGET)
 	$(TARGET) --history --output frontend/report.json

@@ -12,5 +12,6 @@ int main(void)
     assert(storage.total_bytes > 0);
     assert(storage.available_bytes <= storage.total_bytes);
     assert(storage.used_percent <= 100U);
+    assert(storage.mount_count <= STORAGE_MOUNT_LIMIT);
     return 0;
 }

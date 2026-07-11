@@ -76,6 +76,56 @@ static int write_storage_diagnostic(FILE *stream, const StorageInfo *storage)
         stream) == EOF ? -1 : 0;
 }
 
+static int write_steamapps_diagnostic(FILE *stream, const StorageInfo *storage)
+{
+    const char *severity = storage->steamapps_available ? "info" : "unknown";
+    const char *title = storage->steamapps_available
+        ? "Espace occupé par les jeux Steam" : "Bibliothèque Steam non détectée";
+    const char *summary = storage->steamapps_available
+        ? "La taille du dossier steamapps a été mesurée localement." : "Aucun dossier steamapps lisible n'a été trouvé dans les emplacements Steam habituels.";
+
+    if (fprintf(stream, "{\"id\":\"storage.steamapps.size\",\"severity\":") < 0 ||
+        json_write_string(stream, severity) != 0 || fputs(",\"title\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs(",\"evidence\":[", stream) == EOF) return -1;
+    if (storage->steamapps_available) {
+        if (fprintf(stream, "{\"label\":\"Dossier steamapps\",\"bytes\":%" PRIu64 "}", storage->steamapps_bytes) < 0) return -1;
+    } else if (fputs("{\"label\":\"Emplacements vérifiés\",\"value\":\"Steam natif et Flatpak\"}", stream) == EOF) return -1;
+    return fputs(
+        "],\"recommendations\":[{\"label\":\"Déplacer ou désinstaller les jeux inutilisés depuis Steam si l'espace manque\",\"priority\":\"medium\"}],"
+        "\"explanation\":{\"observed\":", stream) == EOF || json_write_string(stream, summary) != 0 ||
+        fputs(",\"why\":\"Les jeux installés et leurs contenus additionnels peuvent représenter une part importante du stockage.\",", stream) == EOF ||
+        fputs("\"impact\":\"Cette mesure aide à relier l'espace utilisé aux jeux, sans analyser le contenu personnel.\",", stream) == EOF ||
+        fputs("\"next_step\":\"Utilisez le gestionnaire de stockage Steam pour voir les jeux les plus volumineux et choisir ceux à déplacer ou désinstaller.\"},\"summary\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 || fputs("}", stream) == EOF ? -1 : 0;
+}
+
+static int write_other_storage_diagnostic(FILE *stream, const StorageInfo *storage)
+{
+    size_t index;
+
+    if (fputs("{\"id\":\"storage.other_mounts.free_space\",\"severity\":\"info\",\"title\":", stream) == EOF ||
+        json_write_string(stream, storage->mount_count == 0 ? "Aucun autre stockage local détecté" : "Espace libre des autres stockages") != 0 ||
+        fputs(",\"evidence\":[", stream) == EOF) return -1;
+    if (storage->mount_count == 0) {
+        if (fputs("{\"label\":\"Montages supplémentaires\",\"value\":\"Aucun détecté\"}", stream) == EOF) return -1;
+    }
+    for (index = 0; index < storage->mount_count; index++) {
+        const StorageMount *mount = &storage->mounts[index];
+        if (index > 0 && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"label\":", stream) == EOF || json_write_string(stream, mount->path) != 0 ||
+            fprintf(stream, ",\"bytes\":%" PRIu64 ",\"detail\":\"%u %% utilisé\"}",
+                mount->available_bytes, mount->used_percent) < 0) return -1;
+    }
+    return fputs(
+        "],\"recommendations\":[{\"label\":\"Choisir le stockage qui convient avant d'installer un jeu ou des données volumineuses\",\"priority\":\"low\"}],"
+        "\"explanation\":{\"observed\":\"Les systèmes de fichiers montés localement sont mesurés séparément.\","
+        "\"why\":\"Un second disque ou une autre partition peut offrir plus d'espace que la partition système.\","
+        "\"impact\":\"Vous pouvez éviter de saturer la partition système en choisissant un emplacement adapté.\","
+        "\"next_step\":\"Comparez l'espace libre avant de créer une nouvelle bibliothèque Steam ou de déplacer des fichiers volumineux.\"},\"summary\":", stream) == EOF ||
+        json_write_string(stream, storage->mount_count == 0 ? "Aucun autre système de fichiers local mesurable." : "Chaque montage indique son espace libre actuel.") != 0 ||
+        fputs("}", stream) == EOF ? -1 : 0;
+}
+
 static int write_gaming_diagnostic(FILE *stream)
 {
     const bool installed = steam_devices_installed();
@@ -197,6 +247,8 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
         write_storage_diagnostic(stream, storage) != 0 ||
+        fputc(',', stream) == EOF || write_steamapps_diagnostic(stream, storage) != 0 ||
+        fputc(',', stream) == EOF || write_other_storage_diagnostic(stream, storage) != 0 ||
         fputs("],\"summary\":\"Capacité de la partition système et espace libre.\"},{\"id\":\"steam\",\"name\":\"Steam & contrôleurs\",\"status\":", stream) == EOF ||
         json_write_string(stream, steam_devices ? "ok" : "warning") != 0 ||
         fputs(",\"score\":", stream) == EOF ||

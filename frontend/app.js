@@ -45,6 +45,25 @@ function formatCount(count, singular, plural) {
   return `${count} ${count > 1 ? plural : singular}`;
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return '';
+  const units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value >= 10 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
+}
+
+function evidenceText(item) {
+  const value = item.value || formatBytes(item.bytes);
+  return value || item.detail
+    ? `${item.label} : ${[value, item.detail].filter(Boolean).join(' · ')}`
+    : item.label;
+}
+
 function normalizeReport(report) {
   if (report.summary && report.categories) return report;
 
@@ -172,7 +191,7 @@ function renderDiagnostics(report) {
     evidence.className = 'evidence';
     (diagnostic.evidence || []).forEach(item => {
       const pill = document.createElement('span');
-      pill.textContent = item.value ? `${item.label}: ${item.value}` : item.label;
+      pill.textContent = evidenceText(item);
       evidence.appendChild(pill);
     });
 

@@ -37,6 +37,10 @@ function statusClass(severity) {
   return `status-${severity || 'unknown'}`;
 }
 
+function statusLabel(severity) {
+  return { ok: 'OK', info: 'Info', warning: 'À surveiller', problem: 'Problème', unknown: 'Indisponible' }[severity] || 'Indisponible';
+}
+
 function formatCount(count, singular, plural) {
   return `${count} ${count > 1 ? plural : singular}`;
 }
@@ -124,11 +128,11 @@ function renderCategories(report) {
 
     const summary = document.createElement('p');
     summary.className = 'muted';
-    summary.textContent = category.summary || '';
+    summary.textContent = category.summary || category.diagnostics?.[0]?.title || 'Aucun diagnostic détaillé.';
 
     const chip = document.createElement('span');
     chip.className = `chip ${statusClass(category.status)}`;
-    chip.textContent = category.status;
+    chip.textContent = statusLabel(category.status);
 
     button.append(top, summary, chip);
     return button;
@@ -161,7 +165,7 @@ function renderDiagnostics(report) {
     left.append(h3, sub);
     const chip = document.createElement('span');
     chip.className = `status-chip ${statusClass(diagnostic.severity)}`;
-    chip.textContent = diagnostic.severity;
+    chip.textContent = statusLabel(diagnostic.severity);
     head.append(left, chip);
 
     const evidence = document.createElement('div');

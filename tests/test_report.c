@@ -23,7 +23,8 @@ int main(void)
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';
     assert(strstr(buffer, "\"storage\"") != NULL);
-    assert(strstr(buffer, "\"gaming\"") != NULL);
+    assert(strstr(buffer, "\"steam\"") != NULL);
+    assert(strstr(buffer, "steam.controller.rules") != NULL);
     assert(strstr(buffer, "\"updates\"") != NULL);
     assert(strstr(buffer, "\"severity\":\"ok\"") != NULL);
     assert(strstr(buffer, "steam-devices") != NULL);

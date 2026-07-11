@@ -94,7 +94,7 @@ static int write_gaming_diagnostic(FILE *stream)
         ? "Aucune action requise."
         : "Installez steam-devices puis reconnectez la manette Steam.";
 
-    if (fprintf(stream, "{\"id\":\"gaming.steam.devices\",\"severity\":") < 0 ||
+    if (fprintf(stream, "{\"id\":\"steam.controller.rules\",\"severity\":") < 0 ||
         json_write_string(stream, severity) != 0 ||
         fputs(",\"title\":", stream) == EOF || json_write_string(stream, title) != 0 ||
         fputs(",\"evidence\":[", stream) == EOF) return -1;
@@ -197,18 +197,22 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
         write_storage_diagnostic(stream, storage) != 0 ||
-        fputs("]},{\"id\":\"gaming\",\"name\":\"Gaming\",\"status\":", stream) == EOF ||
+        fputs("],\"summary\":\"Capacité de la partition système et espace libre.\"},{\"id\":\"steam\",\"name\":\"Steam & contrôleurs\",\"status\":", stream) == EOF ||
         json_write_string(stream, steam_devices ? "ok" : "warning") != 0 ||
         fputs(",\"score\":", stream) == EOF ||
         fprintf(stream, "%d", steam_devices ? 95 : 60) < 0 ||
         fputs(",\"diagnostics\":[", stream) == EOF ||
         write_gaming_diagnostic(stream) != 0 ||
-        fputs("]},{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
+        fputs("],\"summary\":", stream) == EOF ||
+        json_write_string(stream, steam_devices ? "Règles des contrôleurs Steam installées." : "Règles des contrôleurs Steam absentes.") != 0 ||
+        fputs("},{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
         json_write_string(stream, updates_severity(updates)) != 0 ||
         fputs(",\"score\":", stream) == EOF ||
         fprintf(stream, "%d", !updates->available ? 0 : updates->age_days > 30U ? 45 : updates->age_days > 7U ? 75 : 100) < 0 ||
         fputs(",\"diagnostics\":[", stream) == EOF ||
         write_updates_diagnostic(stream, updates) != 0 ||
-        fputs("]}]\n}\n", stream) == EOF) return -1;
+        fputs("],\"summary\":", stream) == EOF ||
+        json_write_string(stream, !updates->available ? "Cache APT inaccessible." : updates->age_days > 7U ? "Informations de paquets à actualiser." : "Informations de paquets récentes.") != 0 ||
+        fputs("}]\n}\n", stream) == EOF) return -1;
     return ferror(stream) ? -1 : 0;
 }

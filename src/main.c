@@ -2,6 +2,7 @@
 #include "storage.h"
 #include "history.h"
 #include "updates.h"
+#include "apps.h"
 #include "steam.h"
 #include "volume.h"
 #include "migration.h"
@@ -22,6 +23,7 @@ int main(int argc, char **argv)
     bool history_enabled = false;
     StorageInfo storage;
     UpdatesInfo updates;
+    AppsInfo apps;
     SteamInfo steam;
     VolumeInventory volumes;
     MigrationPlan migration;
@@ -54,6 +56,9 @@ int main(int argc, char **argv)
     if (updates_collect(&updates, error, sizeof(error)) != 0) {
         updates = (UpdatesInfo){0};
     }
+    if (apps_collect(&apps, error, sizeof(error)) != 0) {
+        apps = (AppsInfo){0};
+    }
     if (steam_collect(&steam, &volumes, error, sizeof(error)) != 0) {
         steam = (SteamInfo){0};
     }
@@ -69,7 +74,7 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "Linux Doctor: cannot write %s: %s\n", output_path, strerror(errno));
         return 1;
     }
-    if (report_write(output, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) != 0) {
+    if (report_write(output, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &history) != 0) {
         (void)fclose(output);
         (void)fprintf(stderr, "Linux Doctor: cannot write report %s\n", output_path);
         return 1;

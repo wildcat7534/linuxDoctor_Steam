@@ -2,7 +2,7 @@ CC := cc
 VERSION := $(shell tr -d '\n' < VERSION)
 CFLAGS := -std=c17 -Wall -Wextra -Werror -Wpedantic -Iinclude -DLINUX_DOCTOR_VERSION=\"$(VERSION)\"
 BUILD_DIR := build
-SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/steam.c src/volume.c src/migration.c src/gfn.c
+SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c
 TARGET := $(BUILD_DIR)/linux-doctor
 
 .PHONY: all clean test run
@@ -24,6 +24,8 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_history
 	$(CC) $(CFLAGS) tests/test_updates.c src/updates.c -o $(BUILD_DIR)/test_updates
 	$(BUILD_DIR)/test_updates
+	$(CC) $(CFLAGS) tests/test_apps.c src/apps.c -o $(BUILD_DIR)/test_apps
+	$(BUILD_DIR)/test_apps
 	$(CC) $(CFLAGS) tests/test_steam.c src/steam.c -o $(BUILD_DIR)/test_steam
 	$(BUILD_DIR)/test_steam
 	$(CC) $(CFLAGS) tests/test_volume.c src/volume.c -o $(BUILD_DIR)/test_volume
@@ -32,7 +34,7 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_migration
 	$(CC) $(CFLAGS) tests/test_gfn.c src/gfn.c -o $(BUILD_DIR)/test_gfn
 	$(BUILD_DIR)/test_gfn
-	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/steam.c src/volume.c src/migration.c src/gfn.c -o $(BUILD_DIR)/test_report
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c -o $(BUILD_DIR)/test_report
 	$(BUILD_DIR)/test_report
 
 run: $(TARGET)

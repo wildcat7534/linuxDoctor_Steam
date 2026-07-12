@@ -425,6 +425,34 @@ function renderDiagnostics(report) {
     }
     renderEnergyEstimate(cards);
   }
+  if (category.id === 'apps') {
+    const inventory = report.apps_inventory || {};
+    (inventory.recommended || []).forEach(app => {
+      const card = document.createElement('article');
+      card.className = `app-card ${app.installed ? 'status-ok' : 'status-info'}`;
+      const head = document.createElement('div');
+      head.className = 'diagnostic-head';
+      const title = document.createElement('h3');
+      title.textContent = app.name || 'Application recommandée';
+      const state = document.createElement('span');
+      state.className = `status-chip ${app.installed ? 'status-ok' : 'status-info'}`;
+      state.textContent = inventory.available ? app.installed ? 'Installée' : 'À installer' : 'État indisponible';
+      head.append(title, state);
+      const summary = document.createElement('p');
+      summary.className = 'muted';
+      summary.textContent = app.summary || '';
+      card.append(head, summary);
+      if (!app.installed && app.install_command) {
+        const command = document.createElement('code');
+        command.textContent = app.install_command;
+        const note = document.createElement('small');
+        note.className = 'muted';
+        note.textContent = 'Commande affichée à titre informatif : Linux Doctor ne lance aucune installation.';
+        card.append(command, note);
+      }
+      cards.push(card);
+    });
+  }
   cards.push(...(category.diagnostics || []).map(diagnostic => {
     const card = document.createElement('article');
     card.className = `diagnostic-card ${statusClass(diagnostic.severity)}`;

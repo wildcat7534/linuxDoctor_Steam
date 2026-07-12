@@ -17,6 +17,7 @@ int main(void)
         .mounts = {{.path = "/mnt/games", .available_bytes = 987654321U, .used_percent = 44U}}
     };
     UpdatesInfo updates = {.available = true, .age_days = 2U};
+    AppsInfo apps = {.package_database_available = true, .gnome_tweaks_installed = false};
     SteamInfo steam = {.ubuntu = true, .ubuntu_2604 = true, .i386_available = true,
         .steam_devices_installed = true, .controller_detected = true,
         .controller_name = "Steam Controller", .library_count = 1U, .game_count = 1U,
@@ -36,7 +37,7 @@ int main(void)
     char buffer[32768];
 
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -56,6 +57,8 @@ int main(void)
     assert(strstr(buffer, "\"steam_migration_plan\"") != NULL);
     assert(strstr(buffer, "gaming.geforce_now.availability") != NULL);
     assert(strstr(buffer, "\"updates\"") != NULL);
+    assert(strstr(buffer, "\"apps\"") != NULL);
+    assert(strstr(buffer, "desktop.gnome_tweaks") != NULL);
     assert(strstr(buffer, "\"severity\":\"ok\"") != NULL);
     assert(strstr(buffer, "steam-devices") != NULL);
     assert(fclose(stream) == 0);
@@ -63,7 +66,7 @@ int main(void)
     updates = (UpdatesInfo){.available = true, .age_days = 8U};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -73,7 +76,7 @@ int main(void)
     updates = (UpdatesInfo){.available = false};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';

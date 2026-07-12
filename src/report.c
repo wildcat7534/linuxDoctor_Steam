@@ -279,6 +279,50 @@ static int write_updates_diagnostic(FILE *stream, const UpdatesInfo *updates)
         fputs("}", stream) == EOF ? -1 : 0;
 }
 
+static const char *apps_severity(const AppsInfo *apps)
+{
+    if (!apps->package_database_available) return "unknown";
+    return apps->gnome_tweaks_installed ? "ok" : "info";
+}
+
+static int write_apps_inventory(FILE *stream, const AppsInfo *apps)
+{
+    if (fputs("\"apps_inventory\":{\"available\":", stream) == EOF ||
+        fputs(apps->package_database_available ? "true" : "false", stream) == EOF ||
+        fputs(",\"recommended\":[{\"id\":\"desktop.gnome_tweaks\",\"name\":\"Gnome Tweaks\","
+            "\"summary\":\"Réglages avancés de GNOME : apparence, polices, extensions et comportements du bureau.\","
+            "\"install_command\":\"sudo apt install gnome-tweaks\",\"installed\":", stream) == EOF ||
+        fputs(apps->gnome_tweaks_installed ? "true" : "false", stream) == EOF) return -1;
+    return fputs("}]}", stream) == EOF ? -1 : 0;
+}
+
+static int write_apps_diagnostic(FILE *stream, const AppsInfo *apps)
+{
+    const bool available = apps->package_database_available;
+    const bool installed = apps->gnome_tweaks_installed;
+    const char *title = !available ? "État de Gnome Tweaks indisponible" : installed
+        ? "Gnome Tweaks détecté" : "Gnome Tweaks recommandé";
+    const char *summary = !available ? "La base locale des paquets DPKG n'est pas accessible." : installed
+        ? "Les réglages avancés de GNOME sont disponibles." : "Ajoutez les réglages avancés de GNOME si vous souhaitez personnaliser votre bureau.";
+    const char *observed = !available ? "Linux Doctor ne peut pas lire la base locale des paquets." : installed
+        ? "Le paquet gnome-tweaks est installé localement." : "Le paquet gnome-tweaks n'est pas installé localement.";
+    const char *next_step = !available ? "Vérifiez que le gestionnaire de paquets est disponible, puis relancez l'analyse." : installed
+        ? "Ouvrez Ajustements depuis le lanceur d'applications lorsque vous en avez besoin." : "Commande proposée, à lancer seulement si vous la validez : sudo apt install gnome-tweaks";
+
+    if (fputs("{\"id\":\"desktop.gnome_tweaks\",\"severity\":", stream) == EOF ||
+        json_write_string(stream, apps_severity(apps)) != 0 || fputs(",\"title\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs(",\"evidence\":[{\"label\":\"État\",\"value\":", stream) == EOF ||
+        json_write_string(stream, !available ? "inconnu" : installed ? "installé" : "à installer") != 0 ||
+        fputs("},{\"label\":\"Paquet\",\"value\":\"gnome-tweaks\"}],\"recommendations\":[{\"label\":", stream) == EOF ||
+        json_write_string(stream, next_step) != 0 || fputs(",\"priority\":\"low\"}],\"explanation\":{\"observed\":", stream) == EOF ||
+        json_write_string(stream, observed) != 0 ||
+        fputs(",\"why\":\"Gnome Tweaks centralise des réglages avancés que les paramètres standards de GNOME ne présentent pas toujours.\","
+            "\"impact\":\"Cette application est facultative : son absence n'indique pas une panne du système.\",\"next_step\":", stream) == EOF ||
+        json_write_string(stream, next_step) != 0 || fputs("},\"summary\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 || fputs("}", stream) == EOF) return -1;
+    return 0;
+}
+
 static int write_history(FILE *stream, const StorageInfo *storage, const HistoryComparison *history)
 {
     if (history == NULL || !history->enabled) return fputs("\"history\":{\"enabled\":false}", stream) == EOF ? -1 : 0;
@@ -398,14 +442,14 @@ static int write_steam_library_diagnostics(FILE *stream, const SteamInfo *steam)
     return 0;
 }
 
-int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
+int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates, const AppsInfo *apps,
     const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
     const GeForceNowInfo *gfn, const HistoryComparison *history)
 {
     const char *severity;
     int score;
 
-    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL || migration == NULL || gfn == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL || apps == NULL || steam == NULL || volumes == NULL || migration == NULL || gfn == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
     if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"application\":{\"name\":\"Linux Doctor Gamer Edition\",\"version\":\"%s\",\"repository\":\"https://github.com/wildcat7534/linuxDoctor_Steam\"},\n  \"system_health\": {\"score\": %d, \"label\": ", LINUX_DOCTOR_VERSION, score) < 0 ||
@@ -414,6 +458,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         fputs(",\n  ", stream) == EOF || write_volumes(stream, volumes) != 0 ||
         fputs(",\n  ", stream) == EOF || write_steam_inventory(stream, steam) != 0 ||
         fputs(",\n  ", stream) == EOF || write_migration_plan(stream, migration) != 0 ||
+        fputs(",\n  ", stream) == EOF || write_apps_inventory(stream, apps) != 0 ||
         fputs(",\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
@@ -444,6 +489,14 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         write_updates_diagnostic(stream, updates) != 0 ||
         fputs("],\"summary\":", stream) == EOF ||
         json_write_string(stream, !updates->available ? "Cache APT inaccessible." : updates->age_days > 7U ? "Informations de paquets à actualiser." : "Informations de paquets récentes.") != 0 ||
+        fputs("},{\"id\":\"apps\",\"name\":\"Apps utiles\",\"icon\":\"🛠\",\"status\":", stream) == EOF ||
+        json_write_string(stream, apps_severity(apps)) != 0 ||
+        fputs(",\"score\":", stream) == EOF ||
+        fprintf(stream, "%d", apps->package_database_available ? 100 : 0) < 0 ||
+        fputs(",\"diagnostics\":[", stream) == EOF || write_apps_diagnostic(stream, apps) != 0 ||
+        fputs("],\"summary\":", stream) == EOF ||
+        json_write_string(stream, !apps->package_database_available ? "État des applications recommandé indisponible."
+            : apps->gnome_tweaks_installed ? "Applications utiles installées." : "Une application utile est proposée, sans obligation.") != 0 ||
         fputs("}]\n}\n", stream) == EOF) return -1;
     return ferror(stream) ? -1 : 0;
 }

@@ -16,8 +16,8 @@ int main(void)
     assert(strcmp(inventory.items[1].path, "/dev/sdb2") == 0);
     assert(strcmp(inventory.items[1].filesystem, "ntfs") == 0);
     assert(!inventory.items[1].mounted);
-    assert(inventory.items[0].windows_protected);
-    assert(inventory.items[1].windows_protected);
+    assert(!inventory.items[0].windows_protected);
+    assert(!inventory.items[1].windows_protected);
     assert(volume_collect(&inventory, error, sizeof(error)) == 0);
     assert(inventory.available);
     assert(inventory.count <= VOLUME_LIMIT);

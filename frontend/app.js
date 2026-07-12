@@ -25,7 +25,7 @@ const dialogWhy = document.querySelector('#dialog-why');
 const dialogImpact = document.querySelector('#dialog-impact');
 const dialogNextStep = document.querySelector('#dialog-next-step');
 const dialogActionsList = document.querySelector('#dialog-actions-list');
-const connectionLabel = document.querySelector('#connection-label');
+const electricLink = document.querySelector('#electric-link');
 
 let selectedCategoryId = null;
 let analysisTimer = null;
@@ -156,7 +156,6 @@ function renderCategories(report) {
     button.className = `category-card ${selectedCategoryId === category.id ? 'selected' : ''}`;
     button.addEventListener('click', () => {
       selectedCategoryId = category.id;
-      setText(connectionLabel, `${category.name} raccordé aux détails`);
       render(report);
     });
 
@@ -180,6 +179,12 @@ function renderCategories(report) {
     button.append(top, summary, chip);
     return button;
   }));
+  const activeTab = categoriesTarget.querySelector('.selected');
+  if (activeTab && electricLink) {
+    const grid = categoriesTarget.getBoundingClientRect();
+    const tab = activeTab.getBoundingClientRect();
+    electricLink.style.setProperty('--wire-x', `${tab.left - grid.left + tab.width / 2}px`);
+  }
 }
 
 function renderDiagnostics(report) {
@@ -463,8 +468,6 @@ function render(report) {
   document.querySelector('#score-ring').title = normalized.system_health?.label || 'health';
   renderCounts(summary, (normalized.good_news || []).length);
   renderCategories(normalized);
-  const selected = normalized.categories?.find(category => category.id === selectedCategoryId);
-  if (selected) setText(connectionLabel, `${selected.name} raccordé aux détails`);
   renderDiagnostics(normalized);
   renderGoodNews(normalized);
   renderHistory(normalized.history);

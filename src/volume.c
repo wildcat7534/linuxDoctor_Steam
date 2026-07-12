@@ -191,7 +191,7 @@ static void collect_object(VolumeInventory *inventory, const char *object)
         char windows_directory[VOLUME_TEXT_CAPACITY * 2U];
         struct stat metadata;
         if (snprintf(windows_directory, sizeof(windows_directory), "%s/Windows/System32", volume.mountpoint) < (int)sizeof(windows_directory) &&
-            stat(windows_directory, &metadata) == 0 && S_ISDIR(metadata.st_mode)) volume.windows_system_component = true;
+            stat(windows_directory, &metadata) == 0 && S_ISDIR(metadata.st_mode)) volume.windows_confirmed = true;
     }
     if (volume.filesystem[0] == '\0' && !volume.mounted) return;
     if (volume.mounted && statvfs(volume.mountpoint, &filesystem) == 0) {
@@ -211,16 +211,14 @@ static void mark_windows_disks(VolumeInventory *inventory)
     size_t first;
 
     for (first = 0; first < inventory->count; first++) {
-        bool system = false;
-        bool data = false;
+        bool confirmed = false;
         size_t second;
 
         for (second = 0; second < inventory->count; second++) {
             if (strcmp(inventory->items[first].parent_path, inventory->items[second].parent_path) != 0) continue;
-            system = system || inventory->items[second].windows_system_component;
-            data = data || inventory->items[second].windows_data_partition;
+            confirmed = confirmed || inventory->items[second].windows_confirmed;
         }
-        if (system && data) {
+        if (confirmed) {
             for (second = 0; second < inventory->count; second++) {
                 if (strcmp(inventory->items[first].parent_path, inventory->items[second].parent_path) == 0)
                     inventory->items[second].windows_protected = true;

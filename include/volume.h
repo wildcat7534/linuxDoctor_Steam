@@ -27,6 +27,7 @@ typedef struct Volume {
     bool removable;
     bool windows_system_component;
     bool windows_data_partition;
+    bool windows_confirmed;
     bool windows_protected;
 } Volume;
 

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <stdint.h>
 #include <sys/statvfs.h>
 #include <sys/wait.h>
@@ -123,7 +124,7 @@ static int run_lsblk(char output[LSBLK_OUTPUT_CAPACITY], char *error, size_t err
     posix_spawn_file_actions_t actions;
     pid_t process;
     const char *arguments[] = {"lsblk", "--json", "--bytes", "--output",
-        "PATH,PKNAME,TYPE,SIZE,FSTYPE,UUID,LABEL,MOUNTPOINTS,RO,RM,TRAN,MODEL", NULL};
+        "PATH,PKNAME,TYPE,SIZE,FSTYPE,UUID,LABEL,PARTLABEL,PARTTYPE,MOUNTPOINTS,RO,RM,TRAN,MODEL", NULL};
     size_t length = 0;
     ssize_t read_count;
     int status;
@@ -168,6 +169,8 @@ static void collect_object(VolumeInventory *inventory, const char *object)
     if (find_field(object, "fstype", &value)) (void)read_string(value, volume.filesystem, sizeof(volume.filesystem));
     if (find_field(object, "uuid", &value)) (void)read_string(value, volume.uuid, sizeof(volume.uuid));
     if (find_field(object, "label", &value)) (void)read_string(value, volume.label, sizeof(volume.label));
+    if (find_field(object, "partlabel", &value)) (void)read_string(value, volume.partition_label, sizeof(volume.partition_label));
+    if (find_field(object, "parttype", &value)) (void)read_string(value, volume.partition_type, sizeof(volume.partition_type));
     if (find_field(object, "transport", &value)) (void)read_string(value, volume.transport, sizeof(volume.transport));
     if (find_field(object, "model", &value)) (void)read_string(value, volume.model, sizeof(volume.model));
     if (find_field(object, "mountpoints", &value)) read_first_array_string(value, volume.mountpoint, sizeof(volume.mountpoint));
@@ -179,6 +182,17 @@ static void collect_object(VolumeInventory *inventory, const char *object)
     if (find_field(object, "ro", &value)) volume.read_only = strncmp(value, "true", 4) == 0 || *value == '1';
     if (find_field(object, "rm", &value)) volume.removable = strncmp(value, "true", 4) == 0 || *value == '1';
     volume.mounted = volume.mountpoint[0] != '\0';
+    volume.windows_system_component = strstr(volume.partition_type, "e3c9e316") != NULL ||
+        strstr(volume.partition_type, "de94bba4") != NULL || strstr(volume.partition_type, "0x27") != NULL ||
+        strstr(volume.partition_label, "Microsoft") != NULL || strstr(volume.label, "Réservé au système") != NULL;
+    volume.windows_data_partition = strcmp(volume.filesystem, "ntfs") == 0 &&
+        (strstr(volume.partition_type, "ebd0a0a2") != NULL || strstr(volume.partition_type, "0x7") != NULL);
+    if (volume.mounted) {
+        char windows_directory[VOLUME_TEXT_CAPACITY * 2U];
+        struct stat metadata;
+        if (snprintf(windows_directory, sizeof(windows_directory), "%s/Windows/System32", volume.mountpoint) < (int)sizeof(windows_directory) &&
+            stat(windows_directory, &metadata) == 0 && S_ISDIR(metadata.st_mode)) volume.windows_system_component = true;
+    }
     if (volume.filesystem[0] == '\0' && !volume.mounted) return;
     if (volume.mounted && statvfs(volume.mountpoint, &filesystem) == 0) {
         uint64_t block_size = filesystem.f_frsize == 0 ? filesystem.f_bsize : filesystem.f_frsize;
@@ -190,6 +204,29 @@ static void collect_object(VolumeInventory *inventory, const char *object)
         return;
     }
     inventory->items[inventory->count++] = volume;
+}
+
+static void mark_windows_disks(VolumeInventory *inventory)
+{
+    size_t first;
+
+    for (first = 0; first < inventory->count; first++) {
+        bool system = false;
+        bool data = false;
+        size_t second;
+
+        for (second = 0; second < inventory->count; second++) {
+            if (strcmp(inventory->items[first].parent_path, inventory->items[second].parent_path) != 0) continue;
+            system = system || inventory->items[second].windows_system_component;
+            data = data || inventory->items[second].windows_data_partition;
+        }
+        if (system && data) {
+            for (second = 0; second < inventory->count; second++) {
+                if (strcmp(inventory->items[first].parent_path, inventory->items[second].parent_path) == 0)
+                    inventory->items[second].windows_protected = true;
+            }
+        }
+    }
 }
 
 static void walk_objects(VolumeInventory *inventory, const char *cursor)
@@ -223,6 +260,7 @@ int volume_parse_lsblk(VolumeInventory *inventory, const char *json, char *error
     }
     *inventory = (VolumeInventory){0};
     walk_objects(inventory, json);
+    mark_windows_disks(inventory);
     inventory->available = true;
     return 0;
 }

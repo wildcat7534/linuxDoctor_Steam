@@ -20,7 +20,7 @@ void migration_plan_build(MigrationPlan *plan, const StorageInfo *storage,
     for (index = 0; index < volumes->count; index++) {
         const Volume *volume = &volumes->items[index];
 
-        if (!volume->mounted || volume->read_only || volume->available_bytes <= plan->destination_available_bytes ||
+        if (!volume->mounted || volume->read_only || volume->windows_protected || volume->available_bytes <= plan->destination_available_bytes ||
             volume->mountpoint[0] == '\0' || strcmp(volume->mountpoint, "/") == 0) continue;
         (void)snprintf(plan->destination_path, sizeof(plan->destination_path), "%s", volume->mountpoint);
         (void)snprintf(plan->destination_volume, sizeof(plan->destination_volume), "%s", volume->path);

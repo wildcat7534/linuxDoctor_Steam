@@ -45,7 +45,7 @@ int main(void)
     assert(strstr(buffer, "storage.other_mounts.free_space") != NULL);
     assert(strstr(buffer, "/mnt/games") != NULL);
     assert(strstr(buffer, "123456789") != NULL);
-    assert(strstr(buffer, "\"steam\"") != NULL);
+    assert(strstr(buffer, "\"gaming\"") != NULL);
     assert(strstr(buffer, "steam.controller.rules") != NULL);
     assert(strstr(buffer, "steam.controller.detected") != NULL);
     assert(strstr(buffer, "steam.ubuntu.runtime") != NULL);

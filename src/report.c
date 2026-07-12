@@ -171,6 +171,20 @@ static int write_ubuntu_diagnostic(FILE *stream, const SteamInfo *steam)
     return 0;
 }
 
+static int write_gaming_scope_diagnostic(FILE *stream)
+{
+    return fputs(
+        "{\"id\":\"gaming.scope\",\"severity\":\"info\",\"title\":\"Périmètre gaming actuel : Steam\","
+        "\"evidence\":[{\"label\":\"Inclus\",\"value\":\"Steam, contrôleurs, bibliothèques et plan de migration\"},"
+        "{\"label\":\"À venir\",\"value\":\"Pilotes graphiques, Vulkan et performances\"}],"
+        "\"recommendations\":[{\"label\":\"Consulter les mises à jour système avant une session de jeu importante\",\"priority\":\"low\"}],"
+        "\"explanation\":{\"observed\":\"Linux Doctor évalue actuellement le socle Steam local.\","
+        "\"why\":\"Les pilotes et la pile graphique nécessitent des collecteurs dédiés pour donner un verdict fiable.\","
+        "\"impact\":\"L'absence d'alerte graphique ne signifie pas encore que les pilotes sont validés.\","
+        "\"next_step\":\"Les diagnostics Vulkan, pilotes et performances seront ajoutés au domaine Gaming.\"},"
+        "\"summary\":\"Steam est couvert ; les diagnostics graphiques arriveront ensuite.\"}", stream) == EOF ? -1 : 0;
+}
+
 static const char *updates_severity(const UpdatesInfo *updates)
 {
     if (!updates->available) return "unknown";
@@ -258,13 +272,15 @@ static int write_volumes(FILE *stream, const VolumeInventory *volumes)
             fputs(",\"uuid\":", stream) == EOF || json_write_string(stream, volume->uuid) != 0 ||
             fputs(",\"label\":", stream) == EOF || json_write_string(stream, volume->label) != 0 ||
             fputs(",\"filesystem\":", stream) == EOF || json_write_string(stream, volume->filesystem) != 0 ||
+            fputs(",\"partition_label\":", stream) == EOF || json_write_string(stream, volume->partition_label) != 0 ||
             fputs(",\"mountpoint\":", stream) == EOF || json_write_string(stream, volume->mountpoint) != 0 ||
             fputs(",\"transport\":", stream) == EOF || json_write_string(stream, volume->transport) != 0 ||
             fprintf(stream, ",\"size_bytes\":%" PRIu64 ",\"available_bytes\":%" PRIu64
-                ",\"used_percent\":%u,\"mounted\":%s,\"read_only\":%s,\"removable\":%s}",
+                ",\"used_percent\":%u,\"mounted\":%s,\"read_only\":%s,\"removable\":%s",
                 volume->size_bytes, volume->available_bytes, volume->used_percent,
                 volume->mounted ? "true" : "false", volume->read_only ? "true" : "false",
-                volume->removable ? "true" : "false") < 0) return -1;
+                volume->removable ? "true" : "false") < 0 ||
+            fprintf(stream, ",\"windows_protected\":%s}", volume->windows_protected ? "true" : "false") < 0) return -1;
     }
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
@@ -369,7 +385,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         write_storage_diagnostic(stream, storage) != 0 ||
         fputc(',', stream) == EOF || write_steamapps_diagnostic(stream, storage) != 0 ||
         fputc(',', stream) == EOF || write_other_storage_diagnostic(stream, storage) != 0 ||
-        fputs("],\"summary\":\"Capacité de la partition système et espace libre.\"},{\"id\":\"steam\",\"name\":\"Steam & contrôleurs\",\"status\":", stream) == EOF ||
+        fputs("],\"summary\":\"Capacité de la partition système et espace libre.\"},{\"id\":\"gaming\",\"name\":\"Gaming\",\"status\":", stream) == EOF ||
         json_write_string(stream, steam->steam_devices_installed && (!steam->ubuntu_2604 || steam->i386_available) ? "ok" : "warning") != 0 ||
         fputs(",\"score\":", stream) == EOF ||
         fprintf(stream, "%d", steam->steam_devices_installed && (!steam->ubuntu_2604 || steam->i386_available) ? 95 : 60) < 0 ||
@@ -377,6 +393,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         write_gaming_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
         write_controller_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
         write_ubuntu_diagnostic(stream, steam) != 0 ||
+        fputc(',', stream) == EOF || write_gaming_scope_diagnostic(stream) != 0 ||
         (steam->library_count > 0 && (fputc(',', stream) == EOF || write_steam_library_diagnostics(stream, steam) != 0)) ||
         fputs("],\"summary\":", stream) == EOF ||
         json_write_string(stream, steam->controller_detected ? "Steam Controller détectée et environnement Steam vérifié."

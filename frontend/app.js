@@ -25,6 +25,7 @@ const dialogWhy = document.querySelector('#dialog-why');
 const dialogImpact = document.querySelector('#dialog-impact');
 const dialogNextStep = document.querySelector('#dialog-next-step');
 const dialogActionsList = document.querySelector('#dialog-actions-list');
+const connectionLabel = document.querySelector('#connection-label');
 
 let selectedCategoryId = null;
 let analysisTimer = null;
@@ -155,6 +156,7 @@ function renderCategories(report) {
     button.className = `category-card ${selectedCategoryId === category.id ? 'selected' : ''}`;
     button.addEventListener('click', () => {
       selectedCategoryId = category.id;
+      setText(connectionLabel, `${category.name} raccordé aux détails`);
       render(report);
     });
 
@@ -198,11 +200,50 @@ function renderDiagnostics(report) {
       const key = physicalDiskKey(volume);
       groups.set(key, [...(groups.get(key) || []), volume]);
     });
+    if (groups.size) {
+      const overview = document.createElement('section');
+      overview.className = 'storage-overview';
+      const title = document.createElement('h3');
+      title.textContent = 'Vue d’ensemble des disques';
+      const hint = document.createElement('p');
+      hint.className = 'muted';
+      hint.textContent = 'Cliquez un disque pour atteindre ses partitions et son état.';
+      const navigator = document.createElement('div');
+      navigator.className = 'disk-navigator';
+      groups.forEach((volumes, disk) => {
+        const mounted = volumes.filter(volume => volume.mounted);
+        const used = mounted.length ? Math.round(mounted.reduce((sum, volume) => sum + volume.used_percent, 0) / mounted.length) : 0;
+        const id = `disk-${disk.replace(/[^a-z0-9]/gi, '')}`;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'disk-shortcut';
+        button.addEventListener('click', () => document.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        const ring = document.createElement('span');
+        ring.className = `disk-ring ${volumes.some(volume => volume.windows_protected) ? 'protected' : ''}`;
+        ring.style.setProperty('--used', `${used}%`);
+        ring.textContent = mounted.length ? `${used}%` : '—';
+        const label = document.createElement('strong');
+        label.textContent = disk;
+        const state = document.createElement('small');
+        state.textContent = volumes.some(volume => volume.windows_protected) ? 'Windows protégé' : `${mounted.length}/${volumes.length} monté(s)`;
+        button.append(ring, label, state);
+        navigator.appendChild(button);
+      });
+      overview.append(title, hint, navigator);
+      cards.push(overview);
+    }
     groups.forEach((volumes, disk) => {
       const group = document.createElement('section');
       group.className = 'volume-group';
+      group.id = `disk-${disk.replace(/[^a-z0-9]/gi, '')}`;
       const heading = document.createElement('h3');
       heading.textContent = `Disque physique ${disk || 'inconnu'}`;
+      if (volumes.some(volume => volume.windows_protected)) {
+        const warning = document.createElement('p');
+        warning.className = 'dualboot-warning';
+        warning.textContent = '⚠ Dual boot Windows probable : ce disque contient des partitions système et données Windows. Ne pas effacer, reformater ni choisir comme destination automatique.';
+        group.appendChild(warning);
+      }
       group.appendChild(heading);
       const groupCards = document.createElement('div');
       groupCards.className = 'diagnostic-list';
@@ -239,7 +280,7 @@ function renderDiagnostics(report) {
       cards.push(group);
     });
   }
-  if (category.id === 'steam') {
+  if (category.id === 'gaming') {
     const inventory = report.steam_inventory || {};
     (inventory.libraries || []).forEach((library, index) => {
       const card = document.createElement('article');
@@ -422,6 +463,8 @@ function render(report) {
   document.querySelector('#score-ring').title = normalized.system_health?.label || 'health';
   renderCounts(summary, (normalized.good_news || []).length);
   renderCategories(normalized);
+  const selected = normalized.categories?.find(category => category.id === selectedCategoryId);
+  if (selected) setText(connectionLabel, `${selected.name} raccordé aux détails`);
   renderDiagnostics(normalized);
   renderGoodNews(normalized);
   renderHistory(normalized.history);

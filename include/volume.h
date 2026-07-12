@@ -14,6 +14,8 @@ typedef struct Volume {
     char uuid[VOLUME_TEXT_CAPACITY];
     char label[VOLUME_TEXT_CAPACITY];
     char filesystem[32];
+    char partition_label[VOLUME_TEXT_CAPACITY];
+    char partition_type[64];
     char mountpoint[VOLUME_TEXT_CAPACITY];
     char transport[32];
     char model[VOLUME_TEXT_CAPACITY];
@@ -23,6 +25,9 @@ typedef struct Volume {
     bool mounted;
     bool read_only;
     bool removable;
+    bool windows_system_component;
+    bool windows_data_partition;
+    bool windows_protected;
 } Volume;
 
 typedef struct VolumeInventory {

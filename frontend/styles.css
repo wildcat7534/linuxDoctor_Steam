@@ -290,8 +290,10 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 .energy-estimates b { color: #7ce8ff; font-size: 1.05rem; }
 .energy-estimates small { color: var(--muted); }
 .membership-cost { margin: .2rem 0 .7rem; color: var(--accent-2); }
-.credits { margin-top: 1rem; padding: .8rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .8rem; }
+.credits { display: flex; align-items: center; gap: .9rem; margin-top: 1rem; padding: .8rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .8rem; }
 .credits h2 { margin-bottom: .35rem; font-size: .9rem; color: var(--text); }
+.credits p { margin-bottom: .35rem; }
+.credits img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(234, 185, 74, .45)); }
 
 .diagnostic-head {
   display: flex;

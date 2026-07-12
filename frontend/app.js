@@ -85,6 +85,67 @@ function usageBar(usedPercent, label) {
   return group;
 }
 
+function renderEnergyEstimate(cards) {
+  const panel = document.createElement('article');
+  panel.className = 'energy-panel';
+  const title = document.createElement('h3');
+  title.textContent = 'Budget énergie — 100 h de jeu AAA';
+  const note = document.createElement('p');
+  note.className = 'muted';
+  note.textContent = 'Estimation transparente : puissance moyenne supposée, écran 27″ 120 Hz inclus. Ce n’est pas une mesure de votre prise.';
+  const controls = document.createElement('div');
+  controls.className = 'energy-controls';
+  const rateLabel = document.createElement('label');
+  rateLabel.textContent = 'Tarif du pays / contrat (€ / kWh)';
+  const rate = document.createElement('input');
+  rate.type = 'number';
+  rate.min = '0';
+  rate.step = '0.001';
+  rate.value = '0.194';
+  rate.setAttribute('aria-label', 'Tarif électricité en euros par kWh');
+  rateLabel.appendChild(rate);
+  const hoursLabel = document.createElement('label');
+  hoursLabel.textContent = 'Heures de jeu';
+  const hours = document.createElement('input');
+  hours.type = 'number';
+  hours.min = '1';
+  hours.step = '1';
+  hours.value = '100';
+  hoursLabel.appendChild(hours);
+  controls.append(rateLabel, hoursLabel);
+  const estimates = document.createElement('div');
+  estimates.className = 'energy-estimates';
+  const profiles = [
+    { name: 'GeForce NOW', watts: 110, detail: 'PC en décodage + écran' },
+    { name: 'PC gaming RTX 3080', watts: 550, detail: 'RTX 3080 + configuration DDR4 + écran' },
+    { name: 'PC gaming RTX 4080', watts: 520, detail: 'RTX 4080 + configuration DDR4 + écran' }
+  ];
+  const refresh = () => {
+    const price = Number(rate.value) || 0;
+    const duration = Number(hours.value) || 0;
+    estimates.replaceChildren(...profiles.map(profile => {
+      const card = document.createElement('section');
+      const kwh = profile.watts * duration / 1000;
+      const name = document.createElement('strong');
+      name.textContent = profile.name;
+      const result = document.createElement('b');
+      result.textContent = `${kwh.toFixed(1)} kWh · ${(kwh * price).toFixed(2)} €`;
+      const detail = document.createElement('small');
+      detail.textContent = `${profile.watts} W moyens supposés · ${profile.detail}`;
+      card.append(name, result, detail);
+      return card;
+    }));
+  };
+  rate.addEventListener('input', refresh);
+  hours.addEventListener('input', refresh);
+  refresh();
+  const source = document.createElement('small');
+  source.className = 'muted';
+  source.textContent = 'Référence France : 0,194 €/kWh TTC (Tarif Bleu Base, février 2026). Modifiez ce tarif selon votre pays ou contrat.';
+  panel.append(title, note, controls, estimates, source);
+  cards.push(panel);
+}
+
 function normalizeReport(report) {
   if (report.summary && report.categories) return report;
 
@@ -359,6 +420,7 @@ function renderDiagnostics(report) {
       card.append(title, description, selection, summary, note);
       cards.push(card);
     }
+    renderEnergyEstimate(cards);
   }
   cards.push(...(category.diagnostics || []).map(diagnostic => {
     const card = document.createElement('article');

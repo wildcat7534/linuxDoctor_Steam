@@ -3,11 +3,13 @@
 #include "volume.h"
 
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <stdint.h>
 #include <sys/statvfs.h>
@@ -188,10 +190,21 @@ static void collect_object(VolumeInventory *inventory, const char *object)
     volume.windows_data_partition = strcmp(volume.filesystem, "ntfs") == 0 &&
         (strstr(volume.partition_type, "ebd0a0a2") != NULL || strstr(volume.partition_type, "0x7") != NULL);
     if (volume.mounted) {
-        char windows_directory[VOLUME_TEXT_CAPACITY * 2U];
-        struct stat metadata;
-        if (snprintf(windows_directory, sizeof(windows_directory), "%s/Windows/System32", volume.mountpoint) < (int)sizeof(windows_directory) &&
-            stat(windows_directory, &metadata) == 0 && S_ISDIR(metadata.st_mode)) volume.windows_confirmed = true;
+        DIR *directory = opendir(volume.mountpoint);
+        struct dirent *entry;
+
+        if (directory != NULL) {
+            while ((entry = readdir(directory)) != NULL) {
+                char windows_directory[VOLUME_TEXT_CAPACITY * 2U];
+                struct stat metadata;
+
+                if (strcasecmp(entry->d_name, "windows") != 0) continue;
+                if (snprintf(windows_directory, sizeof(windows_directory), "%s/%s/System32", volume.mountpoint, entry->d_name) < (int)sizeof(windows_directory) &&
+                    stat(windows_directory, &metadata) == 0 && S_ISDIR(metadata.st_mode)) volume.windows_confirmed = true;
+                break;
+            }
+            (void)closedir(directory);
+        }
     }
     if (volume.filesystem[0] == '\0' && !volume.mounted) return;
     if (volume.mounted && statvfs(volume.mountpoint, &filesystem) == 0) {

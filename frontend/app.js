@@ -252,7 +252,7 @@ function renderDiagnostics(report) {
       group.appendChild(heading);
       const groupCards = document.createElement('div');
       groupCards.className = 'diagnostic-list';
-      volumes.forEach(volume => {
+      volumes.forEach((volume, partitionIndex) => {
       const card = document.createElement('article');
       card.className = `diagnostic-card volume-card ${volume.mounted && !volume.read_only ? 'mounted' : 'unmounted'}`;
       const head = document.createElement('div');
@@ -266,6 +266,7 @@ function renderDiagnostics(report) {
       const evidence = document.createElement('div');
       evidence.className = 'evidence';
       [
+        { label: 'Disque physique', value: `${disk} · partition ${partitionIndex + 1}/${volumes.length}` },
         { label: 'Périphérique', value: volume.path },
         { label: 'Système de fichiers', value: volume.filesystem || 'Inconnu' },
         { label: 'Montage', value: volume.mountpoint || 'Aucun' },
@@ -459,11 +460,17 @@ function render(report) {
   const normalized = normalizeReport(report);
   const summary = normalized.summary || { counts: { problem: 0, warning: 0, ok: 0, unknown: 0 }, overview: '', last_analysis_date: '' };
   const score = normalized.system_health?.score ?? 0;
+  const application = normalized.application || {};
 
   setText(greetingTarget, summary.greeting || 'Bonjour');
   setText(lastAnalysisTarget, summary.last_analysis_date ? `Dernière analyse : ${summary.last_analysis_date}` : 'Dernière analyse : inconnue');
   setText(overviewTarget, summary.overview || '');
   setText(document.querySelector('#score'), score);
+  setText(document.querySelector('#app-version'), application.version
+    ? `${application.name || 'Linux Doctor Gamer Edition'} · v${application.version}`
+    : 'Linux Doctor Gamer Edition');
+  const repository = document.querySelector('#repository-link');
+  if (repository && application.repository) repository.href = application.repository;
   scoreRing.style.setProperty('--score', score);
   document.querySelector('#score-ring').title = normalized.system_health?.label || 'health';
   renderCounts(summary, (normalized.good_news || []).length);

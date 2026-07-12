@@ -29,12 +29,14 @@ int main(void)
             .used_percent = 50U, .mounted = true}}};
     MigrationPlan migration = {.available = true, .destination_path = "/mnt/games",
         .target_free_bytes = 50U, .selected_bytes = 123U, .game_count = 1U, .game_indexes = {0U}};
+    GeForceNowInfo gfn = {.installed = true, .official_flatpak = true, .ubuntu_supported = true,
+        .wayland_session = true, .controller_available = true};
     HistoryComparison history = {.enabled = false};
     FILE *stream = tmpfile();
     char buffer[32768];
 
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -52,6 +54,7 @@ int main(void)
     assert(strstr(buffer, "\"steam_inventory\"") != NULL);
     assert(strstr(buffer, "Test Game") != NULL);
     assert(strstr(buffer, "\"steam_migration_plan\"") != NULL);
+    assert(strstr(buffer, "gaming.geforce_now.availability") != NULL);
     assert(strstr(buffer, "\"updates\"") != NULL);
     assert(strstr(buffer, "\"severity\":\"ok\"") != NULL);
     assert(strstr(buffer, "steam-devices") != NULL);
@@ -60,7 +63,7 @@ int main(void)
     updates = (UpdatesInfo){.available = true, .age_days = 8U};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -70,7 +73,7 @@ int main(void)
     updates = (UpdatesInfo){.available = false};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) == 0);
     assert(fseek(stream, 0, SEEK_SET) == 0);
     assert(fread(buffer, 1, sizeof(buffer) - 1, stream) > 0);
     buffer[sizeof(buffer) - 1] = '\0';

@@ -5,6 +5,7 @@
 #include "steam.h"
 #include "volume.h"
 #include "migration.h"
+#include "gfn.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -12,7 +13,7 @@
 
 static void print_usage(const char *program)
 {
-    (void)fprintf(stderr, "Usage: %s [--history] [--output FILE]\n", program);
+    (void)fprintf(stderr, "Usage: %s [--history] [--output FILE] [--version]\n", program);
 }
 
 int main(int argc, char **argv)
@@ -24,6 +25,7 @@ int main(int argc, char **argv)
     SteamInfo steam;
     VolumeInventory volumes;
     MigrationPlan migration;
+    GeForceNowInfo gfn;
     HistoryComparison history = {0};
     char error[256];
     FILE *output;
@@ -33,6 +35,9 @@ int main(int argc, char **argv)
             history_enabled = true;
         } else if (strcmp(argv[index], "--output") == 0 && index + 1 < argc) {
             output_path = argv[++index];
+        } else if (strcmp(argv[index], "--version") == 0) {
+            (void)printf("Linux Doctor Gamer Edition %s\n", LINUX_DOCTOR_VERSION);
+            return 0;
         } else {
             print_usage(argv[0]);
             return 2;
@@ -53,6 +58,7 @@ int main(int argc, char **argv)
         steam = (SteamInfo){0};
     }
     migration_plan_build(&migration, &storage, &volumes, &steam);
+    gfn_collect(&gfn, &steam);
     if (history_enabled && history_update(&history, storage.used_percent >= 95U ? 45 : storage.used_percent >= 85U ? 75 : 96,
         storage.used_percent, NULL, error, sizeof(error)) != 0) {
         (void)fprintf(stderr, "Linux Doctor: unable to update history: %s\n", error);
@@ -63,7 +69,7 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "Linux Doctor: cannot write %s: %s\n", output_path, strerror(errno));
         return 1;
     }
-    if (report_write(output, &storage, &updates, &steam, &volumes, &migration, &history) != 0) {
+    if (report_write(output, &storage, &updates, &steam, &volumes, &migration, &gfn, &history) != 0) {
         (void)fclose(output);
         (void)fprintf(stderr, "Linux Doctor: cannot write report %s\n", output_path);
         return 1;

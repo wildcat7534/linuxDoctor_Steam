@@ -9,9 +9,10 @@
 #include "steam.h"
 #include "volume.h"
 #include "migration.h"
+#include "gfn.h"
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
     const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
-    const HistoryComparison *history);
+    const GeForceNowInfo *gfn, const HistoryComparison *history);
 
 #endif

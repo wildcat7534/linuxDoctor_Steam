@@ -20,6 +20,7 @@ Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour êt
 | Client Steam / runtime | À ajouter : installation et journaux | Fenêtre noire, `steamwebhelper` et mises à jour du runtime sont des symptômes distincts. |
 | Flatpak, Snap ou paquet Debian | À ajouter : provenance d'installation | Les permissions et les runtimes diffèrent ; ils ne doivent pas être confondus. |
 | Bibliothèques de jeux | Taille de `steamapps` et volumes montés | La taille ne révèle ni le jeu ni le contenu personnel. |
+| GeForce NOW sous Wayland | Flatpak officiel, session Wayland et Steam Controller détectés | Une demande de portail bureau peut venir du mode souris Steam Input ; elle n'est pas une preuve de panne. |
 
 ## Sources de suivi
 
@@ -28,6 +29,8 @@ Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour êt
 - [Suivi officiel Steam pour Linux](https://github.com/ValveSoftware/steam-for-linux)
 - [Suivi officiel Proton](https://github.com/ValveSoftware/Proton/issues)
 - [Dépannage Steam Controller](https://help.steampowered.com/en/faqs/view/41EA-7E25-B1F0-67E9)
+- [Exigences système GeForce NOW](https://www.nvidia.com/en-gb/geforce-now/system-reqs/)
+- [Application GeForce NOW pour Linux](https://blogs.nvidia.com/blog/geforce-now-thursday-linux/)
 
 ## Règle de prudence
 

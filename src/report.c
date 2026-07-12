@@ -185,6 +185,41 @@ static int write_gaming_scope_diagnostic(FILE *stream)
         "\"summary\":\"Steam est couvert ; les diagnostics graphiques arriveront ensuite.\"}", stream) == EOF ? -1 : 0;
 }
 
+static int write_gfn_diagnostic(FILE *stream, const GeForceNowInfo *gfn)
+{
+    const char *severity = !gfn->installed ? "info" : !gfn->ubuntu_supported ? "warning" : "ok";
+    const char *title = !gfn->installed ? "GeForce NOW non détecté" : "GeForce NOW pour Linux détecté";
+
+    if (fputs("{\"id\":\"gaming.geforce_now.availability\",\"severity\":", stream) == EOF ||
+        json_write_string(stream, severity) != 0 || fputs(",\"title\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs(",\"evidence\":[{\"label\":\"Application Flatpak officielle\",\"value\":", stream) == EOF ||
+        json_write_string(stream, gfn->official_flatpak ? "détectée" : "non détectée") != 0 ||
+        fputs("},{\"label\":\"Ubuntu pris en charge\",\"value\":", stream) == EOF ||
+        json_write_string(stream, gfn->ubuntu_supported ? "Ubuntu 24.04 ou ultérieur" : "à vérifier") != 0 ||
+        fputs("}],\"recommendations\":[{\"label\":\"Mettre à jour l'application depuis son gestionnaire Flatpak avant une session\",\"priority\":\"low\"}],\"explanation\":{\"observed\":", stream) == EOF ||
+        json_write_string(stream, gfn->installed ? "L'identifiant Flatpak officiel com.nvidia.geforcenow est présent localement." : "Aucune application GeForce NOW Flatpak officielle n'a été trouvée.") != 0 ||
+        fputs(",\"why\":\"La prise en charge Linux officielle commence avec Ubuntu 24.04 et reste une application à mettre à jour séparément.\","
+            "\"impact\":\"Linux Doctor ne contacte pas Internet : il ne peut pas affirmer que la version locale est la toute dernière.\","
+            "\"next_step\":\"Utilisez votre gestionnaire Flatpak pour consulter les mises à jour disponibles.\"},\"summary\":", stream) == EOF ||
+        json_write_string(stream, title) != 0 || fputs("}", stream) == EOF) return -1;
+    return 0;
+}
+
+static int write_gfn_wayland_diagnostic(FILE *stream, const GeForceNowInfo *gfn)
+{
+    if (!gfn->installed || !gfn->wayland_session || !gfn->controller_available) return 0;
+    return fputs(
+        "{\"id\":\"gaming.geforce_now.wayland_controller_portal\",\"severity\":\"info\","
+        "\"title\":\"Steam Controller et autorisation Wayland\","
+        "\"evidence\":[{\"label\":\"Session\",\"value\":\"Wayland\"},{\"label\":\"Contrôleur Steam\",\"value\":\"détecté\"}],"
+        "\"recommendations\":[{\"label\":\"N'accepter le partage/contrôle du bureau que lorsque la fenêtre attendue s'affiche et que vous utilisez le mode souris/bureau\",\"priority\":\"medium\"}],"
+        "\"explanation\":{\"observed\":\"Wayland limite l'émulation de souris et de clavier par les applications.\","
+        "\"why\":\"Steam Input peut demander un portail de partage ou de bureau lorsqu'une commande de la manette active le mode souris/bureau.\","
+        "\"impact\":\"Une fenêtre d'autorisation peut apparaître en appuyant sur un bouton ; cela ne signifie pas à lui seul que GeForce NOW est en panne.\","
+        "\"next_step\":\"Vérifiez d'abord le test d'entrée Steam. Pour une demande de portail attendue, lisez son origine avant de l'accepter ; refusez toute demande inattendue.\"},"
+        "\"summary\":\"Information connue pour Steam Controller sous Wayland : une demande de portail peut apparaître en mode bureau.\"}", stream) == EOF ? -1 : 0;
+}
+
 static const char *updates_severity(const UpdatesInfo *updates)
 {
     if (!updates->available) return "unknown";
@@ -365,15 +400,15 @@ static int write_steam_library_diagnostics(FILE *stream, const SteamInfo *steam)
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
     const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
-    const HistoryComparison *history)
+    const GeForceNowInfo *gfn, const HistoryComparison *history)
 {
     const char *severity;
     int score;
 
-    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL || migration == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL || migration == NULL || gfn == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
-    if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
+    if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"application\":{\"name\":\"Linux Doctor Gamer Edition\",\"version\":\"%s\",\"repository\":\"https://github.com/wildcat7534/linuxDoctor_Steam\"},\n  \"system_health\": {\"score\": %d, \"label\": ", LINUX_DOCTOR_VERSION, score) < 0 ||
         json_write_string(stream, severity) != 0 ||
         fputs("},\n  ", stream) == EOF || write_history(stream, storage, history) != 0 ||
         fputs(",\n  ", stream) == EOF || write_volumes(stream, volumes) != 0 ||
@@ -394,6 +429,9 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         write_controller_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
         write_ubuntu_diagnostic(stream, steam) != 0 ||
         fputc(',', stream) == EOF || write_gaming_scope_diagnostic(stream) != 0 ||
+        fputc(',', stream) == EOF || write_gfn_diagnostic(stream, gfn) != 0 ||
+        (gfn->installed && gfn->wayland_session && gfn->controller_available &&
+            (fputc(',', stream) == EOF || write_gfn_wayland_diagnostic(stream, gfn) != 0)) ||
         (steam->library_count > 0 && (fputc(',', stream) == EOF || write_steam_library_diagnostics(stream, steam) != 0)) ||
         fputs("],\"summary\":", stream) == EOF ||
         json_write_string(stream, steam->controller_detected ? "Steam Controller détectée et environnement Steam vérifié."

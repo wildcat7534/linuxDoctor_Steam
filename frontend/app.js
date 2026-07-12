@@ -117,8 +117,8 @@ function renderEnergyEstimate(cards) {
   estimates.className = 'energy-estimates';
   const profiles = [
     { name: 'GeForce NOW', watts: 110, detail: 'PC en décodage + écran' },
-    { name: 'PC gaming RTX 3080', watts: 550, detail: 'RTX 3080 + configuration DDR4 + écran' },
-    { name: 'PC gaming RTX 4080', watts: 520, detail: 'RTX 4080 + configuration DDR4 + écran' }
+    { name: 'PC gamer moyen', watts: 420, detail: 'RTX 5070 / Ryzen 5 + 32 Go + écran 27″ 120 Hz' },
+    { name: 'Uber PC', watts: 620, detail: 'RTX 4080 Super / CPU haut de gamme + 32 Go DDR5 + écran 27″ 120 Hz' }
   ];
   const refresh = () => {
     const price = Number(rate.value) || 0;
@@ -142,7 +142,10 @@ function renderEnergyEstimate(cards) {
   const source = document.createElement('small');
   source.className = 'muted';
   source.textContent = 'Référence France : 0,194 €/kWh TTC (Tarif Bleu Base, février 2026). Modifiez ce tarif selon votre pays ou contrat.';
-  panel.append(title, note, controls, estimates, source);
+  const membership = document.createElement('p');
+  membership.className = 'membership-cost';
+  membership.textContent = 'GeForce NOW Ultimate : 219,98 € / 12 mois hors promotion, soit 18,33 € / mois. L’abonnement et l’électricité sont deux coûts distincts.';
+  panel.append(title, note, controls, estimates, membership, source);
   cards.push(panel);
 }
 

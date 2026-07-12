@@ -289,6 +289,9 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 .energy-estimates section { display: grid; gap: .3rem; padding: .75rem; border: 1px solid #345e64; border-radius: 12px; background: #122025; }
 .energy-estimates b { color: #7ce8ff; font-size: 1.05rem; }
 .energy-estimates small { color: var(--muted); }
+.membership-cost { margin: .2rem 0 .7rem; color: var(--accent-2); }
+.credits { margin-top: 1rem; padding: .8rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .8rem; }
+.credits h2 { margin-bottom: .35rem; font-size: .9rem; color: var(--text); }
 
 .diagnostic-head {
   display: flex;

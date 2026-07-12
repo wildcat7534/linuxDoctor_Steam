@@ -23,6 +23,8 @@ Le schéma V2 ajoute deux blocs indépendants des diagnostics :
 
 Les collecteurs ne modifient aucun volume. Une partition non montée, une bibliothèque non inscriptible ou un manifeste incomplet sont exposés comme des faits ; le diagnostic NTFS, la lecture de `fstab` et toute réparation sont différés à la V0.3 ou au-delà.
 
+Le plan de migration V0.4 est également lecture seule : le backend choisit une destination déjà montée et inscriptible, puis une sélection de jeux permettant d'atteindre l'objectif d'espace libre. Le rapport expose cette simulation ; l'interface ne déplace aucun fichier et renvoie vers le gestionnaire de stockage Steam pour toute action réelle.
+
 ## Composants
 
 | Composant | Responsabilité |

@@ -1,7 +1,7 @@
 CC := cc
 CFLAGS := -std=c17 -Wall -Wextra -Werror -Wpedantic -Iinclude
 BUILD_DIR := build
-SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/steam.c src/volume.c
+SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/steam.c src/volume.c src/migration.c
 TARGET := $(BUILD_DIR)/linux-doctor
 
 .PHONY: all clean test run
@@ -27,7 +27,9 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_steam
 	$(CC) $(CFLAGS) tests/test_volume.c src/volume.c -o $(BUILD_DIR)/test_volume
 	$(BUILD_DIR)/test_volume
-	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/steam.c src/volume.c -o $(BUILD_DIR)/test_report
+	$(CC) $(CFLAGS) tests/test_migration.c src/migration.c -o $(BUILD_DIR)/test_migration
+	$(BUILD_DIR)/test_migration
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/steam.c src/volume.c src/migration.c -o $(BUILD_DIR)/test_report
 	$(BUILD_DIR)/test_report
 
 run: $(TARGET)

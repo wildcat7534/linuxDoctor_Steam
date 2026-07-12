@@ -10,6 +10,7 @@
 
 typedef struct Volume {
     char path[VOLUME_TEXT_CAPACITY];
+    char parent_path[VOLUME_TEXT_CAPACITY];
     char uuid[VOLUME_TEXT_CAPACITY];
     char label[VOLUME_TEXT_CAPACITY];
     char filesystem[32];

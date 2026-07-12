@@ -254,6 +254,7 @@ static int write_volumes(FILE *stream, const VolumeInventory *volumes)
 
         if (index > 0 && fputc(',', stream) == EOF) return -1;
         if (fputs("{\"path\":", stream) == EOF || json_write_string(stream, volume->path) != 0 ||
+            fputs(",\"parent_path\":", stream) == EOF || json_write_string(stream, volume->parent_path) != 0 ||
             fputs(",\"uuid\":", stream) == EOF || json_write_string(stream, volume->uuid) != 0 ||
             fputs(",\"label\":", stream) == EOF || json_write_string(stream, volume->label) != 0 ||
             fputs(",\"filesystem\":", stream) == EOF || json_write_string(stream, volume->filesystem) != 0 ||
@@ -300,6 +301,24 @@ static int write_steam_inventory(FILE *stream, const SteamInfo *steam)
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
 
+static int write_migration_plan(FILE *stream, const MigrationPlan *plan)
+{
+    size_t index;
+
+    if (fputs("\"steam_migration_plan\":{\"available\":", stream) == EOF ||
+        fputs(plan->available ? "true" : "false", stream) == EOF ||
+        fputs(",\"destination_path\":", stream) == EOF || json_write_string(stream, plan->destination_path) != 0 ||
+        fputs(",\"destination_volume\":", stream) == EOF || json_write_string(stream, plan->destination_volume) != 0 ||
+        fprintf(stream, ",\"destination_available_bytes\":%" PRIu64 ",\"target_free_bytes\":%" PRIu64
+            ",\"selected_bytes\":%" PRIu64 ",\"game_indexes\":[",
+            plan->destination_available_bytes, plan->target_free_bytes, plan->selected_bytes) < 0) return -1;
+    for (index = 0; index < plan->game_count; index++) {
+        if (index > 0 && fputc(',', stream) == EOF) return -1;
+        if (fprintf(stream, "%zu", plan->game_indexes[index]) < 0) return -1;
+    }
+    return fputs("]}", stream) == EOF ? -1 : 0;
+}
+
 static int write_steam_library_diagnostics(FILE *stream, const SteamInfo *steam)
 {
     size_t index;
@@ -329,12 +348,13 @@ static int write_steam_library_diagnostics(FILE *stream, const SteamInfo *steam)
 }
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
-    const SteamInfo *steam, const VolumeInventory *volumes, const HistoryComparison *history)
+    const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
+    const HistoryComparison *history)
 {
     const char *severity;
     int score;
 
-    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL || migration == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
     if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
@@ -342,6 +362,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         fputs("},\n  ", stream) == EOF || write_history(stream, storage, history) != 0 ||
         fputs(",\n  ", stream) == EOF || write_volumes(stream, volumes) != 0 ||
         fputs(",\n  ", stream) == EOF || write_steam_inventory(stream, steam) != 0 ||
+        fputs(",\n  ", stream) == EOF || write_migration_plan(stream, migration) != 0 ||
         fputs(",\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||

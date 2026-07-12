@@ -141,10 +141,23 @@ h1 { margin-bottom: .35rem; }
   min-height: 110px;
 }
 
+.category-card[role="tab"] { position: relative; }
+.category-card[role="tab"]::after {
+  content: 'Afficher';
+  position: absolute;
+  right: .9rem;
+  bottom: .8rem;
+  font-size: .75rem;
+  color: var(--muted);
+}
+.category-card.selected[role="tab"]::after { content: 'Onglet actif'; color: var(--accent); }
+
 .category-card.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px rgba(168, 239, 106, .2);
+  background: linear-gradient(145deg, #1e3520, #141d14);
 }
+.category-card.selected::after { content: 'Onglet actif'; color: var(--accent); }
 
 .category-card .top {
   display: flex;
@@ -185,6 +198,30 @@ h1 { margin-bottom: .35rem; }
   display: grid;
   gap: .7rem;
 }
+
+.volume-group {
+  padding: 1rem;
+  border: 1px solid #39523b;
+  border-radius: 16px;
+  background: #101810;
+}
+.volume-group > h3 { margin-bottom: .75rem; }
+.volume-card.mounted { border-left: 4px solid var(--accent); }
+.volume-card.unmounted { border-left: 4px solid var(--warning); }
+.capacity { display: grid; gap: .35rem; }
+.capacity-bar {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #263227;
+}
+.capacity-bar i { display: block; height: 100%; background: var(--accent); }
+.capacity-bar.warning i { background: var(--warning); }
+.capacity-bar.critical i { background: var(--problem); }
+.migration-plan { border-color: #6b926d; }
+.migration-selection { display: grid; gap: .45rem; }
+.migration-selection label { cursor: pointer; }
+.migration-summary { margin: 0; color: var(--accent); }
 
 .diagnostic-head {
   display: flex;

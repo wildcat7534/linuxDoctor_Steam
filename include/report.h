@@ -8,8 +8,10 @@
 #include "updates.h"
 #include "steam.h"
 #include "volume.h"
+#include "migration.h"
 
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
-    const SteamInfo *steam, const VolumeInventory *volumes, const HistoryComparison *history);
+    const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
+    const HistoryComparison *history);
 
 #endif

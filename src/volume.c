@@ -123,7 +123,7 @@ static int run_lsblk(char output[LSBLK_OUTPUT_CAPACITY], char *error, size_t err
     posix_spawn_file_actions_t actions;
     pid_t process;
     const char *arguments[] = {"lsblk", "--json", "--bytes", "--output",
-        "PATH,TYPE,SIZE,FSTYPE,UUID,LABEL,MOUNTPOINTS,RO,RM,TRAN,MODEL", NULL};
+        "PATH,PKNAME,TYPE,SIZE,FSTYPE,UUID,LABEL,MOUNTPOINTS,RO,RM,TRAN,MODEL", NULL};
     size_t length = 0;
     ssize_t read_count;
     int status;
@@ -171,6 +171,10 @@ static void collect_object(VolumeInventory *inventory, const char *object)
     if (find_field(object, "transport", &value)) (void)read_string(value, volume.transport, sizeof(volume.transport));
     if (find_field(object, "model", &value)) (void)read_string(value, volume.model, sizeof(volume.model));
     if (find_field(object, "mountpoints", &value)) read_first_array_string(value, volume.mountpoint, sizeof(volume.mountpoint));
+    if (find_field(object, "pkname", &value)) {
+        char parent[128];
+        if (read_string(value, parent, sizeof(parent))) (void)snprintf(volume.parent_path, sizeof(volume.parent_path), "/dev/%s", parent);
+    }
     if (find_field(object, "size", &value)) volume.size_bytes = strtoull(value, NULL, 10);
     if (find_field(object, "ro", &value)) volume.read_only = strncmp(value, "true", 4) == 0 || *value == '1';
     if (find_field(object, "rm", &value)) volume.removable = strncmp(value, "true", 4) == 0 || *value == '1';

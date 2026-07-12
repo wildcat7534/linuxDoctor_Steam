@@ -64,6 +64,26 @@ function evidenceText(item) {
     : item.label;
 }
 
+function physicalDiskKey(volume) {
+  if (volume.parent_path) return volume.parent_path;
+  return volume.path.replace(/p?\d+$/, '');
+}
+
+function usageBar(usedPercent, label) {
+  const bar = document.createElement('div');
+  bar.className = `capacity-bar ${usedPercent >= 95 ? 'critical' : usedPercent >= 85 ? 'warning' : ''}`;
+  const fill = document.createElement('i');
+  fill.style.width = `${Math.max(0, Math.min(100, usedPercent))}%`;
+  bar.append(fill);
+  const text = document.createElement('small');
+  text.className = 'muted';
+  text.textContent = label;
+  const group = document.createElement('div');
+  group.className = 'capacity';
+  group.append(bar, text);
+  return group;
+}
+
 function normalizeReport(report) {
   if (report.summary && report.categories) return report;
 
@@ -130,6 +150,8 @@ function renderCategories(report) {
   categoriesTarget.replaceChildren(...categories.map(category => {
     const button = document.createElement('button');
     button.type = 'button';
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', String(selectedCategoryId === category.id));
     button.className = `category-card ${selectedCategoryId === category.id ? 'selected' : ''}`;
     button.addEventListener('click', () => {
       selectedCategoryId = category.id;
@@ -171,9 +193,22 @@ function renderDiagnostics(report) {
   setText(selectedCategorySummary, category.summary || '');
   const cards = [];
   if (category.id === 'storage') {
+    const groups = new Map();
     (report.storage_inventory?.volumes || []).forEach(volume => {
+      const key = physicalDiskKey(volume);
+      groups.set(key, [...(groups.get(key) || []), volume]);
+    });
+    groups.forEach((volumes, disk) => {
+      const group = document.createElement('section');
+      group.className = 'volume-group';
+      const heading = document.createElement('h3');
+      heading.textContent = `Disque physique ${disk || 'inconnu'}`;
+      group.appendChild(heading);
+      const groupCards = document.createElement('div');
+      groupCards.className = 'diagnostic-list';
+      volumes.forEach(volume => {
       const card = document.createElement('article');
-      card.className = `diagnostic-card ${volume.mounted && !volume.read_only ? 'status-ok' : 'status-info'}`;
+      card.className = `diagnostic-card volume-card ${volume.mounted && !volume.read_only ? 'mounted' : 'unmounted'}`;
       const head = document.createElement('div');
       head.className = 'diagnostic-head';
       const title = document.createElement('h3');
@@ -196,8 +231,12 @@ function renderDiagnostics(report) {
         pill.textContent = evidenceText(item);
         evidence.appendChild(pill);
       });
-      card.append(head, evidence);
-      cards.push(card);
+      const stateLabel = volume.mounted ? `${volume.used_percent} % utilisés · ${formatBytes(volume.available_bytes)} libres` : 'Non monté : espace libre non mesurable';
+      card.append(head, evidence, usageBar(volume.mounted ? volume.used_percent : 0, stateLabel));
+      groupCards.appendChild(card);
+    });
+      group.appendChild(groupCards);
+      cards.push(group);
     });
   }
   if (category.id === 'steam') {
@@ -236,6 +275,43 @@ function renderDiagnostics(report) {
       } else card.append(head, evidence);
       cards.push(card);
     });
+    const plan = report.steam_migration_plan;
+    if (plan?.available) {
+      const card = document.createElement('article');
+      card.className = 'diagnostic-card migration-plan';
+      const title = document.createElement('h3');
+      title.textContent = 'Plan de migration simulé';
+      const description = document.createElement('p');
+      description.className = 'muted';
+      description.textContent = `Destination proposée : ${plan.destination_path} (${formatBytes(plan.destination_available_bytes)} libres). Aucun fichier ne sera déplacé.`;
+      const selection = document.createElement('div');
+      selection.className = 'migration-selection';
+      const summary = document.createElement('p');
+      summary.className = 'migration-summary';
+      const refresh = () => {
+        const selected = [...selection.querySelectorAll('input:checked')]
+          .reduce((total, input) => total + Number(input.dataset.size), 0);
+        summary.textContent = `Sélection : ${formatBytes(selected)} · objectif : libérer ${formatBytes(plan.target_free_bytes)} sur la partition système.`;
+      };
+      (plan.game_indexes || []).forEach(index => {
+        const game = inventory.games?.[index];
+        if (!game) return;
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.dataset.size = String(game.size_bytes);
+        checkbox.addEventListener('change', refresh);
+        label.append(checkbox, document.createTextNode(` ${game.name} — ${formatBytes(game.size_bytes)}`));
+        selection.appendChild(label);
+      });
+      refresh();
+      const note = document.createElement('small');
+      note.className = 'muted';
+      note.textContent = 'Simulation V0.4 : ouvrez ensuite le gestionnaire de stockage Steam pour effectuer un déplacement contrôlé.';
+      card.append(title, description, selection, summary, note);
+      cards.push(card);
+    }
   }
   cards.push(...(category.diagnostics || []).map(diagnostic => {
     const card = document.createElement('article');
@@ -265,15 +341,11 @@ function renderDiagnostics(report) {
 
     const actions = document.createElement('div');
     actions.className = 'actions';
-    const why = document.createElement('button');
-    why.type = 'button';
-    why.textContent = 'Pourquoi ?';
-    why.addEventListener('click', () => openInsight(diagnostic, 'Pourquoi ?'));
-    const fix = document.createElement('button');
-    fix.type = 'button';
-    fix.textContent = 'Comment réparer';
-    fix.addEventListener('click', () => openInsight(diagnostic, 'Comment réparer'));
-    actions.append(why, fix);
+    const details = document.createElement('button');
+    details.type = 'button';
+    details.textContent = 'Détails et recommandations';
+    details.addEventListener('click', () => openInsight(diagnostic, 'Détails et recommandations'));
+    actions.append(details);
 
     card.append(head, evidence, actions);
     return card;

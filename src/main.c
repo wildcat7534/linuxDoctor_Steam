@@ -3,6 +3,7 @@
 #include "history.h"
 #include "updates.h"
 #include "steam.h"
+#include "volume.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
     StorageInfo storage;
     UpdatesInfo updates;
     SteamInfo steam;
+    VolumeInventory volumes;
     HistoryComparison history = {0};
     char error[256];
     FILE *output;
@@ -38,10 +40,14 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "Linux Doctor: unable to collect storage: %s\n", error);
         return 1;
     }
+    if (volume_collect(&volumes, error, sizeof(error)) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: unable to collect volumes: %s\n", error);
+        return 1;
+    }
     if (updates_collect(&updates, error, sizeof(error)) != 0) {
         updates = (UpdatesInfo){0};
     }
-    if (steam_collect(&steam, error, sizeof(error)) != 0) {
+    if (steam_collect(&steam, &volumes, error, sizeof(error)) != 0) {
         steam = (SteamInfo){0};
     }
     if (history_enabled && history_update(&history, storage.used_percent >= 95U ? 45 : storage.used_percent >= 85U ? 75 : 96,
@@ -54,7 +60,7 @@ int main(int argc, char **argv)
         (void)fprintf(stderr, "Linux Doctor: cannot write %s: %s\n", output_path, strerror(errno));
         return 1;
     }
-    if (report_write(output, &storage, &updates, &steam, &history) != 0) {
+    if (report_write(output, &storage, &updates, &steam, &volumes, &history) != 0) {
         (void)fclose(output);
         (void)fprintf(stderr, "Linux Doctor: cannot write report %s\n", output_path);
         return 1;

@@ -4,7 +4,9 @@ Outil local de diagnostic Linux qui associe une alerte à son explication : pas 
 
 ## État actuel
 
-Le premier jalon fournit un exécutable C17 qui analyse la capacité de la partition racine et génère un rapport JSON. Le frontend est autonome : il lit ce fichier et ne contient aucune logique de diagnostic. Aucune connexion réseau n'est effectuée par le backend. Avec `--history`, les 30 dernières analyses sont conservées localement et comparées.
+La V0.2 fournit un exécutable C17 qui inventorie les volumes montés ou non montés, puis les bibliothèques Steam et leurs jeux installés. Le rapport JSON V2 reste local ; le frontend le lit sans logique de diagnostic. Aucune connexion réseau n'est effectuée par le backend. Avec `--history`, les 30 dernières analyses sont conservées localement et comparées.
+
+L'inventaire est strictement en lecture seule : il ne monte pas de volume, ne lance pas `ntfsfix`, ne modifie pas `/etc/fstab` et ne déplace aucun jeu. Ces opérations restent prévues pour des versions ultérieures avec simulation et confirmation explicite.
 
 ## Lancer
 

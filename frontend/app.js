@@ -169,7 +169,75 @@ function renderDiagnostics(report) {
 
   setText(selectedCategoryTitle, `${category.icon || ''} ${category.name}`);
   setText(selectedCategorySummary, category.summary || '');
-  diagnosticsTarget.replaceChildren(...(category.diagnostics || []).map(diagnostic => {
+  const cards = [];
+  if (category.id === 'storage') {
+    (report.storage_inventory?.volumes || []).forEach(volume => {
+      const card = document.createElement('article');
+      card.className = `diagnostic-card ${volume.mounted && !volume.read_only ? 'status-ok' : 'status-info'}`;
+      const head = document.createElement('div');
+      head.className = 'diagnostic-head';
+      const title = document.createElement('h3');
+      title.textContent = volume.label || volume.path;
+      const state = document.createElement('span');
+      state.className = 'status-chip status-info';
+      state.textContent = volume.mounted ? volume.read_only ? 'Lecture seule' : 'Monté' : 'Non monté';
+      head.append(title, state);
+      const evidence = document.createElement('div');
+      evidence.className = 'evidence';
+      [
+        { label: 'Périphérique', value: volume.path },
+        { label: 'Système de fichiers', value: volume.filesystem || 'Inconnu' },
+        { label: 'Montage', value: volume.mountpoint || 'Aucun' },
+        { label: 'Espace libre', bytes: volume.available_bytes },
+        { label: 'Utilisation', value: volume.mounted ? `${volume.used_percent} %` : 'Non mesurable' },
+        { label: 'UUID', value: volume.uuid || 'Indisponible' }
+      ].forEach(item => {
+        const pill = document.createElement('span');
+        pill.textContent = evidenceText(item);
+        evidence.appendChild(pill);
+      });
+      card.append(head, evidence);
+      cards.push(card);
+    });
+  }
+  if (category.id === 'steam') {
+    const inventory = report.steam_inventory || {};
+    (inventory.libraries || []).forEach((library, index) => {
+      const card = document.createElement('article');
+      card.className = `diagnostic-card ${library.mounted && library.writable ? 'status-ok' : 'status-warning'}`;
+      const head = document.createElement('div');
+      head.className = 'diagnostic-head';
+      const title = document.createElement('h3');
+      title.textContent = `Bibliothèque Steam ${index + 1}`;
+      const state = document.createElement('span');
+      state.className = 'status-chip status-info';
+      state.textContent = library.mounted ? library.writable ? 'Disponible' : 'Lecture seule' : 'Indisponible';
+      head.append(title, state);
+      const evidence = document.createElement('div');
+      evidence.className = 'evidence';
+      [
+        { label: 'Chemin', value: library.path },
+        { label: 'Volume', value: library.volume_path || 'Non associé' },
+        { label: 'Système de fichiers', value: library.filesystem || 'Inconnu' },
+        { label: 'Espace libre', bytes: library.available_bytes },
+        { label: 'Jeux installés', value: String(library.game_count) },
+        { label: 'Jeux déclarés', bytes: library.game_bytes }
+      ].forEach(item => {
+        const pill = document.createElement('span');
+        pill.textContent = evidenceText(item);
+        evidence.appendChild(pill);
+      });
+      const games = (inventory.games || []).filter(game => game.library_index === index);
+      if (games.length) {
+        const list = document.createElement('p');
+        list.className = 'muted';
+        list.textContent = games.map(game => `${game.name} (${formatBytes(game.size_bytes)})`).join(' · ');
+        card.append(head, evidence, list);
+      } else card.append(head, evidence);
+      cards.push(card);
+    });
+  }
+  cards.push(...(category.diagnostics || []).map(diagnostic => {
     const card = document.createElement('article');
     card.className = `diagnostic-card ${statusClass(diagnostic.severity)}`;
 
@@ -210,6 +278,7 @@ function renderDiagnostics(report) {
     card.append(head, evidence, actions);
     return card;
   }));
+  diagnosticsTarget.replaceChildren(...cards);
 }
 
 function renderGoodNews(report) {

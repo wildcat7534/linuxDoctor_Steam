@@ -14,6 +14,15 @@ Système Linux → collecteurs C → règles de diagnostic → rapport JSON
 
 Le backend est un outil CLI, par exemple `linux-doctor --output report.json`. Le frontend peut être servi par n'importe quel serveur statique local ; aucune ressource distante n'est requise.
 
+## Schéma V2 — inventaires lecture seule
+
+Le schéma V2 ajoute deux blocs indépendants des diagnostics :
+
+- `storage_inventory.volumes` : partitions détectées, y compris celles qui ne sont pas montées ;
+- `steam_inventory.libraries` et `steam_inventory.games` : bibliothèques Steam et manifests de jeux.
+
+Les collecteurs ne modifient aucun volume. Une partition non montée, une bibliothèque non inscriptible ou un manifeste incomplet sont exposés comme des faits ; le diagnostic NTFS, la lecture de `fstab` et toute réparation sont différés à la V0.3 ou au-delà.
+
 ## Composants
 
 | Composant | Responsabilité |

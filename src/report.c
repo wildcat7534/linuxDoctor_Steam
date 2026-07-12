@@ -241,18 +241,107 @@ static int write_history(FILE *stream, const StorageInfo *storage, const History
         history->previous_used_percent, storage->used_percent) < 0 ? -1 : 0;
 }
 
+static int write_volumes(FILE *stream, const VolumeInventory *volumes)
+{
+    size_t index;
+
+    if (fputs("\"storage_inventory\":{\"available\":", stream) == EOF ||
+        fputs(volumes->available ? "true" : "false", stream) == EOF ||
+        fputs(",\"truncated\":", stream) == EOF || fputs(volumes->truncated ? "true" : "false", stream) == EOF ||
+        fputs(",\"volumes\":[", stream) == EOF) return -1;
+    for (index = 0; index < volumes->count; index++) {
+        const Volume *volume = &volumes->items[index];
+
+        if (index > 0 && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"path\":", stream) == EOF || json_write_string(stream, volume->path) != 0 ||
+            fputs(",\"uuid\":", stream) == EOF || json_write_string(stream, volume->uuid) != 0 ||
+            fputs(",\"label\":", stream) == EOF || json_write_string(stream, volume->label) != 0 ||
+            fputs(",\"filesystem\":", stream) == EOF || json_write_string(stream, volume->filesystem) != 0 ||
+            fputs(",\"mountpoint\":", stream) == EOF || json_write_string(stream, volume->mountpoint) != 0 ||
+            fputs(",\"transport\":", stream) == EOF || json_write_string(stream, volume->transport) != 0 ||
+            fprintf(stream, ",\"size_bytes\":%" PRIu64 ",\"available_bytes\":%" PRIu64
+                ",\"used_percent\":%u,\"mounted\":%s,\"read_only\":%s,\"removable\":%s}",
+                volume->size_bytes, volume->available_bytes, volume->used_percent,
+                volume->mounted ? "true" : "false", volume->read_only ? "true" : "false",
+                volume->removable ? "true" : "false") < 0) return -1;
+    }
+    return fputs("]}", stream) == EOF ? -1 : 0;
+}
+
+static int write_steam_inventory(FILE *stream, const SteamInfo *steam)
+{
+    size_t index;
+
+    if (fputs("\"steam_inventory\":{\"truncated\":", stream) == EOF ||
+        fputs(steam->inventory_truncated ? "true" : "false", stream) == EOF ||
+        fputs(",\"libraries\":[", stream) == EOF) return -1;
+    for (index = 0; index < steam->library_count; index++) {
+        const SteamLibrary *library = &steam->libraries[index];
+
+        if (index > 0 && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"path\":", stream) == EOF || json_write_string(stream, library->path) != 0 ||
+            fputs(",\"volume_path\":", stream) == EOF || json_write_string(stream, library->volume_path) != 0 ||
+            fputs(",\"filesystem\":", stream) == EOF || json_write_string(stream, library->filesystem) != 0 ||
+            fprintf(stream, ",\"available_bytes\":%" PRIu64 ",\"game_bytes\":%" PRIu64
+                ",\"game_count\":%zu,\"mounted\":%s,\"writable\":%s}",
+                library->available_bytes, library->game_bytes, library->game_count,
+                library->mounted ? "true" : "false", library->writable ? "true" : "false") < 0) return -1;
+    }
+    if (fputs("],\"games\":[", stream) == EOF) return -1;
+    for (index = 0; index < steam->game_count; index++) {
+        const SteamGame *game = &steam->games[index];
+
+        if (index > 0 && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"appid\":", stream) == EOF || json_write_string(stream, game->appid) != 0 ||
+            fputs(",\"name\":", stream) == EOF || json_write_string(stream, game->name) != 0 ||
+            fprintf(stream, ",\"size_bytes\":%" PRIu64 ",\"library_index\":%zu,\"directory_present\":%s}",
+                game->size_bytes, game->library_index, game->directory_present ? "true" : "false") < 0) return -1;
+    }
+    return fputs("]}", stream) == EOF ? -1 : 0;
+}
+
+static int write_steam_library_diagnostics(FILE *stream, const SteamInfo *steam)
+{
+    size_t index;
+    bool first = true;
+
+    for (index = 0; index < steam->library_count; index++) {
+        const SteamLibrary *library = &steam->libraries[index];
+        const char *severity = !library->mounted ? "warning" : !library->writable ? "warning" : "info";
+        const char *title = !library->mounted ? "Bibliothèque Steam indisponible" : !library->writable
+            ? "Bibliothèque Steam en lecture seule" : "Bibliothèque Steam inventoriée";
+
+        if (!first && fputc(',', stream) == EOF) return -1;
+        first = false;
+        if (fputs("{\"id\":\"steam.library.status\",\"severity\":", stream) == EOF ||
+            json_write_string(stream, severity) != 0 || fputs(",\"title\":", stream) == EOF ||
+            json_write_string(stream, title) != 0 || fputs(",\"evidence\":[{\"label\":\"Bibliothèque\",\"value\":", stream) == EOF ||
+            json_write_string(stream, library->path) != 0 ||
+            fprintf(stream, "},{\"label\":\"Jeux installés\",\"value\":\"%zu\"}],", library->game_count) < 0 ||
+            fputs("\"recommendations\":[{\"label\":\"Vérifier le montage et les permissions avant toute migration\",\"priority\":\"medium\"}],"
+                "\"explanation\":{\"observed\":\"La bibliothèque a été lue localement, sans modifier Steam.\","
+                "\"why\":\"Steam a besoin d'un emplacement monté et inscriptible pour installer, mettre à jour ou déplacer un jeu.\","
+                "\"impact\":\"Une bibliothèque indisponible ou en lecture seule ne doit pas être choisie comme destination.\","
+                "\"next_step\":\"Utilisez le gestionnaire de stockage Steam pour toute opération sur les jeux.\"},\"summary\":", stream) == EOF ||
+            json_write_string(stream, title) != 0 || fputs("}", stream) == EOF) return -1;
+    }
+    return 0;
+}
+
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates,
-    const SteamInfo *steam, const HistoryComparison *history)
+    const SteamInfo *steam, const VolumeInventory *volumes, const HistoryComparison *history)
 {
     const char *severity;
     int score;
 
-    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL) return -1;
+    if (stream == NULL || storage == NULL || updates == NULL || steam == NULL || volumes == NULL) return -1;
     severity = severity_for(storage);
     score = score_for(severity);
-    if (fprintf(stream, "{\n  \"schema_version\": 1,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
+    if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"system_health\": {\"score\": %d, \"label\": ", score) < 0 ||
         json_write_string(stream, severity) != 0 ||
         fputs("},\n  ", stream) == EOF || write_history(stream, storage, history) != 0 ||
+        fputs(",\n  ", stream) == EOF || write_volumes(stream, volumes) != 0 ||
+        fputs(",\n  ", stream) == EOF || write_steam_inventory(stream, steam) != 0 ||
         fputs(",\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
         json_write_string(stream, severity) != 0 ||
         fprintf(stream, ", \"score\": %d, \"diagnostics\": [", score) < 0 ||
@@ -267,6 +356,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         write_gaming_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
         write_controller_diagnostic(stream, steam) != 0 || fputc(',', stream) == EOF ||
         write_ubuntu_diagnostic(stream, steam) != 0 ||
+        (steam->library_count > 0 && (fputc(',', stream) == EOF || write_steam_library_diagnostics(stream, steam) != 0)) ||
         fputs("],\"summary\":", stream) == EOF ||
         json_write_string(stream, steam->controller_detected ? "Steam Controller détectée et environnement Steam vérifié."
             : "Règles Steam et compatibilité Ubuntu vérifiées.") != 0 ||

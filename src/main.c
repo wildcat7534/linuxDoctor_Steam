@@ -9,6 +9,7 @@
 #include "gfn.h"
 #include "graphics.h"
 #include "knowledge.h"
+#include "future_lab.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -16,12 +17,16 @@
 
 static void print_usage(const char *program)
 {
-    (void)fprintf(stderr, "Usage: %s [--history] [--output FILE] [--version]\n", program);
+    (void)fprintf(stderr, "Usage: %s [--history] [--output FILE] [--version]\n"
+        "       %s --check-knowledge FILE\n"
+        "       %s --install-knowledge FILE\n", program, program, program);
 }
 
 int main(int argc, char **argv)
 {
     const char *output_path = "report.json";
+    const char *check_knowledge_path = NULL;
+    const char *install_knowledge_path = NULL;
     bool history_enabled = false;
     StorageInfo storage;
     UpdatesInfo updates;
@@ -32,6 +37,7 @@ int main(int argc, char **argv)
     GeForceNowInfo gfn;
     GraphicsInfo graphics;
     GamingKnowledgeBase knowledge;
+    FutureLabSnapshot future_lab;
     HistoryComparison history = {0};
     char error[256];
     FILE *output;
@@ -44,10 +50,38 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[index], "--version") == 0) {
             (void)printf("Linux Doctor Gamer Edition %s\n", LINUX_DOCTOR_VERSION);
             return 0;
+        } else if (strcmp(argv[index], "--check-knowledge") == 0 && index + 1 < argc) {
+            check_knowledge_path = argv[++index];
+        } else if (strcmp(argv[index], "--install-knowledge") == 0 && index + 1 < argc) {
+            install_knowledge_path = argv[++index];
         } else {
             print_usage(argv[0]);
             return 2;
         }
+    }
+    if (check_knowledge_path != NULL && install_knowledge_path != NULL) {
+        print_usage(argv[0]);
+        return 2;
+    }
+    if (check_knowledge_path != NULL) {
+        if (gaming_knowledge_validate_file(check_knowledge_path, &knowledge, error, sizeof(error)) != 0) {
+            (void)fprintf(stderr, "Linux Doctor: invalid knowledge database: %s\n", error);
+            return 1;
+        }
+        (void)printf("Linux Doctor: knowledge database %s reviewed %s (%zu entries) is valid.\n",
+            knowledge.version, knowledge.reviewed_on, knowledge.entry_count);
+        return 0;
+    }
+    if (install_knowledge_path != NULL) {
+        char installed_path[GAMING_KNOWLEDGE_PATH_CAPACITY];
+
+        if (gaming_knowledge_install(install_knowledge_path, installed_path,
+            sizeof(installed_path), error, sizeof(error)) != 0) {
+            (void)fprintf(stderr, "Linux Doctor: cannot install knowledge database: %s\n", error);
+            return 1;
+        }
+        (void)printf("Linux Doctor: knowledge database installed in %s\n", installed_path);
+        return 0;
     }
     if (storage_collect_root(&storage, error, sizeof(error)) != 0) {
         (void)fprintf(stderr, "Linux Doctor: unable to collect storage: %s\n", error);
@@ -68,12 +102,27 @@ int main(int argc, char **argv)
     }
     migration_plan_build(&migration, &storage, &volumes, &steam);
     gfn_collect(&gfn, &steam);
-    if (gaming_knowledge_load(&knowledge, "data/gaming-knowledge.tsv", &steam, &gfn,
-        error, sizeof(error)) != 0) {
-        knowledge = (GamingKnowledgeBase){0};
+    {
+        char knowledge_path[GAMING_KNOWLEDGE_PATH_CAPACITY];
+        bool user_database = false;
+        bool knowledge_loaded = false;
+
+        if (gaming_knowledge_resolve_path(knowledge_path, sizeof(knowledge_path),
+            &user_database, error, sizeof(error)) == 0 &&
+            gaming_knowledge_load_validated(&knowledge, knowledge_path, &steam, &gfn,
+                error, sizeof(error)) == 0) {
+            knowledge.user_database = user_database;
+            knowledge_loaded = true;
+        }
+        if (!knowledge_loaded && gaming_knowledge_load_validated(&knowledge, "data/gaming-knowledge.tsv",
+            &steam, &gfn, error, sizeof(error)) == 0) knowledge_loaded = true;
+        if (!knowledge_loaded) knowledge = (GamingKnowledgeBase){0};
     }
     if (graphics_collect(&graphics, error, sizeof(error)) != 0) {
         graphics = (GraphicsInfo){0};
+    }
+    if (future_lab_collect(&future_lab, error, sizeof(error)) != 0) {
+        future_lab = (FutureLabSnapshot){0};
     }
     if (history_enabled) {
         if (!report_health_complete(&storage, &graphics)) {
@@ -90,7 +139,7 @@ int main(int argc, char **argv)
         return 1;
     }
     if (report_write(output, &storage, &updates, &apps, &steam, &volumes, &migration,
-        &gfn, &graphics, &knowledge, &history) != 0) {
+        &gfn, &graphics, &knowledge, &future_lab, &history) != 0) {
         (void)fclose(output);
         (void)fprintf(stderr, "Linux Doctor: cannot write report %s\n", output_path);
         return 1;

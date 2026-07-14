@@ -3,7 +3,7 @@ VERSION := $(shell tr -d '\n' < VERSION)
 CFLAGS := -std=c17 -Wall -Wextra -Werror -Wpedantic -Iinclude -DLINUX_DOCTOR_VERSION=\"$(VERSION)\"
 LDLIBS := -ldl
 BUILD_DIR := build
-SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/graphics.c src/knowledge.c
+SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/graphics.c src/knowledge.c src/future_lab.c
 TARGET := $(BUILD_DIR)/linux-doctor
 
 .PHONY: all clean test run
@@ -41,7 +41,9 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_graphics
 	$(CC) $(CFLAGS) tests/test_knowledge.c src/knowledge.c -o $(BUILD_DIR)/test_knowledge
 	$(BUILD_DIR)/test_knowledge
-	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/knowledge.c -o $(BUILD_DIR)/test_report
+	$(CC) $(CFLAGS) tests/test_future_lab.c src/future_lab.c -o $(BUILD_DIR)/test_future_lab
+	$(BUILD_DIR)/test_future_lab
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/knowledge.c src/future_lab.c -o $(BUILD_DIR)/test_report
 	$(BUILD_DIR)/test_report
 
 run: $(TARGET)

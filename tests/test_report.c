@@ -94,7 +94,8 @@ int main(void)
     VolumeInventory volumes = {.available = true, .count = 1U,
         .items = {{.path = "/dev/sdb2", .uuid = "test-uuid", .filesystem = "ntfs",
             .mountpoint = "/mnt/games", .size_bytes = 1000U, .available_bytes = 500U,
-            .used_percent = 50U, .mounted = true}}};
+            .used_percent = 50U, .mounted = true, .windows_data_partition = true,
+            .windows_confirmed = false, .windows_protected = true}}};
     MigrationPlan migration = {.available = true, .destination_path = "/mnt/games",
         .target_free_bytes = 50U, .selected_bytes = 123U, .game_count = 1U, .game_indexes = {0U}};
     GeForceNowInfo gfn = {.installed = true, .official_flatpak = true, .ubuntu_supported = true,
@@ -105,17 +106,49 @@ int main(void)
         .opengl_loader_available = true,
         .devices = {{.card = "card0", .vendor = "NVIDIA", .vendor_id = "10DE",
             .device_id = "2204", .driver = "nvidia", .boot_vga = true}}};
-    GamingKnowledgeBase knowledge = {.available = true, .entry_count = 1U, .relevant_count = 1U,
+    GamingKnowledgeBase knowledge = {.available = true, .user_database = true,
+        .schema_version = GAMING_KNOWLEDGE_SCHEMA_VERSION,
+        .entry_count = 1U, .relevant_count = 1U,
+        .version = "fixture-1", .reviewed_on = "2026-07-14",
         .entries = {{.kind = "game", .target = "123", .severity = "warning",
             .title = "Known fixture issue", .summary = "Fixture summary",
             .guidance = "Fixture guidance", .source_url = "https://example.com/123",
             .updated_on = "2026-07-14", .relevant = true}}};
+    FutureLabSnapshot future_lab = {
+        .cpu = {.state = FUTURE_LAB_STATE_AVAILABLE, .logical_cpu_count = 8U,
+            .user_ticks = 100U, .nice_ticks = 2U, .system_ticks = 50U,
+            .idle_ticks = 800U, .iowait_ticks = 10U, .irq_ticks = 3U,
+            .softirq_ticks = 4U, .steal_ticks = 1U, .busy_ticks = 160U,
+            .total_ticks = 970U},
+        .load = {.state = FUTURE_LAB_STATE_AVAILABLE, .one_minute = 0.42,
+            .five_minutes = 0.33, .fifteen_minutes = 0.25,
+            .running_tasks = 2U, .total_tasks = 345U},
+        .memory = {.state = FUTURE_LAB_STATE_AVAILABLE, .total_kib = 32000000U,
+            .available_kib = 12000000U, .used_kib = 20000000U,
+            .buffers_kib = 500000U, .cached_kib = 7000000U,
+            .swap_total_kib = 8000000U, .swap_free_kib = 6000000U},
+        .network = {.state = FUTURE_LAB_STATE_AVAILABLE,
+            .observed_interface_count = 1U, .interface_count = 1U,
+            .received_bytes = 1234U, .transmitted_bytes = 5678U,
+            .interfaces = {{.name = "eth0", .received_bytes = 1234U,
+                .received_packets = 12U, .received_errors = 1U,
+                .received_dropped = 2U, .transmitted_bytes = 5678U,
+                .transmitted_packets = 34U, .transmitted_errors = 3U,
+                .transmitted_dropped = 4U}}},
+        .disks = {.state = FUTURE_LAB_STATE_AVAILABLE,
+            .observed_device_count = 1U, .skipped_pseudo_device_count = 2U,
+            .device_count = 1U, .devices = {{.name = "nvme0n1",
+                .reads_completed = 100U, .sectors_read = 200U,
+                .writes_completed = 300U, .sectors_written = 400U}}}
+    };
     HistoryComparison history = {.enabled = false};
     FILE *stream = tmpfile();
     char buffer[65536];
     GraphicsInfo headless_graphics = graphics;
     GraphicsInfo incomplete_graphics = graphics;
     GraphicsInfo headless_incomplete_graphics;
+    FutureLabNetworkSnapshot available_network = future_lab.network;
+    FutureLabSnapshot available_future_lab = future_lab;
 
     headless_graphics.session_available = false;
     (void)snprintf(headless_graphics.session_type, sizeof(headless_graphics.session_type), "%s", "tty");
@@ -142,13 +175,15 @@ int main(void)
     assert(report_health_complete(&storage, &graphics));
 
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "\"storage\"") != NULL);
     assert(strstr(buffer, "\"generated_at\"") != NULL);
     assert(strstr(buffer, "\"scope\":[\"storage\",\"graphics\"],\"complete\":true") != NULL);
     assert(strstr(buffer, "\"storage_inventory\"") != NULL);
     assert(strstr(buffer, "test-uuid") != NULL);
+    assert(strstr(buffer, "\"windows_system_component\":false,\"windows_data_partition\":true,"
+        "\"windows_confirmed\":false,\"windows_protected\":true") != NULL);
     assert(strstr(buffer, "storage.steamapps.size") != NULL);
     assert(strstr(buffer, "storage.other_mounts.free_space") != NULL);
     assert(strstr(buffer, "/mnt/games") != NULL);
@@ -169,6 +204,10 @@ int main(void)
     assert(strstr(buffer, "\"tool_count\":1") != NULL);
     assert(strstr(buffer, "\"icon_data_uri\":\"data:image/jpeg;base64,") != NULL);
     assert(strstr(buffer, "\"gaming_knowledge\"") != NULL);
+    assert(strstr(buffer, "\"source\":\"user-update\"") != NULL);
+    assert(strstr(buffer, "\"schema_version\":1,\"version\":\"fixture-1\"") != NULL);
+    assert(strstr(buffer, "\"version\":\"fixture-1\"") != NULL);
+    assert(strstr(buffer, "./scripts/update-knowledge.sh") != NULL);
     assert(strstr(buffer, "Known fixture issue") != NULL);
     assert(strstr(buffer, "\"steam_migration_plan\"") != NULL);
     assert(strstr(buffer, "gaming.geforce_now.availability") != NULL);
@@ -186,6 +225,18 @@ int main(void)
     assert(strstr(buffer, "\"apps\"") != NULL);
     assert(strstr(buffer, "desktop.gnome_tweaks") != NULL);
     assert(strstr(buffer, "\"graphics_inventory\"") != NULL);
+    assert(strstr(buffer, "\"future_lab\":{\"read_only\":true") != NULL);
+    assert(strstr(buffer, "\"complete\":true,\"cpu\":{\"state\":\"available\"") != NULL);
+    assert(strstr(buffer, "\"scope\":\"since_boot\",\"unit\":\"scheduler_ticks\"") != NULL);
+    assert(strstr(buffer, "\"kind\":\"kernel_run_queue_average\"") != NULL);
+    assert(strstr(buffer, "\"network\":{\"state\":\"available\"") != NULL);
+    assert(strstr(buffer, "\"name\":\"eth0\",\"counters\":{\"cumulative\":true") != NULL);
+    assert(strstr(buffer, "\"sector_size_not_interpreted\":true") != NULL);
+    assert(strstr(buffer, "\"name\":\"nvme0n1\",\"counters\":{\"cumulative\":true") != NULL);
+    assert(strstr(buffer, "bytes_per_second") == NULL);
+    assert(strstr(buffer, "\"id\":\"future_lab\",\"name\":\"Future Lab\",\"icon\":\"🧪\","
+        "\"status\":\"info\",\"score\":null") != NULL);
+    assert(strstr(buffer, "Cette vue n'entre pas dans le score global") != NULL);
     assert(strstr(buffer, "\"graphics\"") != NULL);
     assert(strstr(buffer, "graphics.gpu.driver") != NULL);
     assert(strstr(buffer, "graphics.vulkan.loader") != NULL);
@@ -199,12 +250,38 @@ int main(void)
     assert(strstr(buffer, "steam-devices") != NULL);
     assert(fclose(stream) == 0);
 
+    future_lab.network = (FutureLabNetworkSnapshot){0};
+    stream = tmpfile();
+    assert(stream != NULL);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration,
+        &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
+    read_stream(stream, buffer, sizeof(buffer));
+    assert(strstr(buffer, "\"future_lab\":{\"read_only\":true,\"snapshot_kind\":"
+        "\"single_local_snapshot\",\"rates_calculated\":false,\"complete\":false") != NULL);
+    assert(strstr(buffer, "\"network\":{\"state\":\"unknown\",\"source\":\"/proc/net/dev\"}") != NULL);
+    assert(strstr(buffer, "\"id\":\"future_lab\",\"name\":\"Future Lab\",\"icon\":\"🧪\","
+        "\"status\":\"info\",\"score\":null") != NULL);
+    assert(fclose(stream) == 0);
+    future_lab.network = available_network;
+
+    future_lab = (FutureLabSnapshot){0};
+    stream = tmpfile();
+    assert(stream != NULL);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration,
+        &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
+    read_stream(stream, buffer, sizeof(buffer));
+    assert(strstr(buffer, "\"id\":\"future_lab\",\"name\":\"Future Lab\",\"icon\":\"🧪\","
+        "\"status\":\"unknown\",\"score\":null") != NULL);
+    assert(strstr(buffer, "Les sources locales /proc du Future Lab ne sont pas disponibles") != NULL);
+    assert(fclose(stream) == 0);
+    future_lab = available_future_lab;
+
     updates = (UpdatesInfo){.cache_available = true, .cache_age_days = 8U,
         .inventory_available = true, .selection_available = true,
         .hold_information_available = true, .metadata_available = true};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "updates.apt.cache_age\",\"severity\":\"warning") != NULL);
     assert(fclose(stream) == 0);
@@ -212,7 +289,7 @@ int main(void)
     updates = (UpdatesInfo){.cache_available = false};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "updates.apt.cache_age\",\"severity\":\"unknown") != NULL);
     assert(fclose(stream) == 0);
@@ -222,7 +299,7 @@ int main(void)
         .packages = {{.name = "example", .state = APT_UPDATE_UNKNOWN}}};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "État actuel des candidats non confirmé") != NULL);
     assert(strstr(buffer, "\"unknown\":1") != NULL);
@@ -235,7 +312,7 @@ int main(void)
     updates.deferred_count = 1U;
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "Descriptions APT incomplètes") != NULL);
     assert(fclose(stream) == 0);
@@ -243,7 +320,7 @@ int main(void)
     updates.truncated = true;
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "Liste des mises à jour partielle") != NULL);
     assert(fclose(stream) == 0);
@@ -251,7 +328,7 @@ int main(void)
     graphics.vulkan_loader_available = false;
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "graphics.vulkan.loader\",\"severity\":\"warning") != NULL);
     assert(strstr(buffer, "\"score\": 65") != NULL);
@@ -261,7 +338,7 @@ int main(void)
     graphics = (GraphicsInfo){0};
     stream = tmpfile();
     assert(stream != NULL);
-    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &history) == 0);
+    assert(report_write(stream, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &graphics, &knowledge, &future_lab, &history) == 0);
     read_stream(stream, buffer, sizeof(buffer));
     assert(strstr(buffer, "graphics.gpu.driver\",\"severity\":\"unknown") != NULL);
     assert(strstr(buffer, "\"score\": 96") != NULL);

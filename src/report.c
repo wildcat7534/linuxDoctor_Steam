@@ -194,7 +194,7 @@ static int write_gaming_scope_diagnostic(FILE *stream)
     return fputs(
         "{\"id\":\"gaming.scope\",\"severity\":\"info\",\"title\":\"Périmètre gaming actuel\","
         "\"evidence\":[{\"label\":\"Inclus\",\"value\":\"Steam, contrôleurs, bibliothèques et plan de migration\"},"
-        "{\"label\":\"Graphismes 0.6\",\"value\":\"GPU, pilote noyau et présence des socles Vulkan/OpenGL\"},"
+        "{\"label\":\"Graphismes\",\"value\":\"GPU, pilote noyau et présence des socles Vulkan/OpenGL\"},"
         "{\"label\":\"À venir\",\"value\":\"Rendu réel, versions, HDR, VRR et performances\"}],"
         "\"recommendations\":[{\"label\":\"Consulter la catégorie Graphismes avant une session de jeu importante\",\"priority\":\"low\"}],"
         "\"explanation\":{\"observed\":\"Linux Doctor sépare désormais le socle Steam des signaux graphiques locaux.\","
@@ -619,6 +619,160 @@ static int write_graphics_inventory(FILE *stream, const GraphicsInfo *graphics)
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
 
+static int write_future_lab_cpu(FILE *stream, const FutureLabCpuSnapshot *cpu)
+{
+    if (fputs("\"cpu\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(cpu->state)) != 0 ||
+        fputs(",\"source\":\"/proc/stat\"", stream) == EOF) return -1;
+    if (cpu->state == FUTURE_LAB_STATE_AVAILABLE &&
+        (fprintf(stream, ",\"logical_cpu_count\":%zu,\"counters\":{"
+            "\"cumulative\":true,\"scope\":\"since_boot\",\"unit\":\"scheduler_ticks\","
+            "\"user\":%" PRIu64 ",\"nice\":%" PRIu64 ",\"system\":%" PRIu64
+            ",\"idle\":%" PRIu64 ",\"iowait\":%" PRIu64 ",\"irq\":%" PRIu64
+            ",\"softirq\":%" PRIu64 ",\"steal\":%" PRIu64 ",\"busy\":%" PRIu64
+            ",\"total\":%" PRIu64 "}",
+            cpu->logical_cpu_count, cpu->user_ticks, cpu->nice_ticks, cpu->system_ticks,
+            cpu->idle_ticks, cpu->iowait_ticks, cpu->irq_ticks, cpu->softirq_ticks,
+            cpu->steal_ticks, cpu->busy_ticks, cpu->total_ticks) < 0)) return -1;
+    return fputc('}', stream) == EOF ? -1 : 0;
+}
+
+static int write_future_lab_load(FILE *stream, const FutureLabLoadSnapshot *load)
+{
+    if (fputs("\"load\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(load->state)) != 0 ||
+        fputs(",\"source\":\"/proc/loadavg\"", stream) == EOF) return -1;
+    if (load->state == FUTURE_LAB_STATE_AVAILABLE &&
+        fprintf(stream, ",\"kind\":\"kernel_run_queue_average\","
+            "\"one_minute\":%.2f,\"five_minutes\":%.2f,\"fifteen_minutes\":%.2f,"
+            "\"running_tasks\":%" PRIu64 ",\"total_tasks\":%" PRIu64,
+            load->one_minute, load->five_minutes, load->fifteen_minutes,
+            load->running_tasks, load->total_tasks) < 0) return -1;
+    return fputc('}', stream) == EOF ? -1 : 0;
+}
+
+static int write_future_lab_memory(FILE *stream, const FutureLabMemorySnapshot *memory)
+{
+    if (fputs("\"memory\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(memory->state)) != 0 ||
+        fputs(",\"source\":\"/proc/meminfo\"", stream) == EOF) return -1;
+    if (memory->state == FUTURE_LAB_STATE_AVAILABLE &&
+        fprintf(stream, ",\"unit\":\"KiB\",\"total\":%" PRIu64
+            ",\"available\":%" PRIu64 ",\"used\":%" PRIu64
+            ",\"buffers\":%" PRIu64 ",\"cached\":%" PRIu64
+            ",\"swap_total\":%" PRIu64 ",\"swap_free\":%" PRIu64,
+            memory->total_kib, memory->available_kib, memory->used_kib,
+            memory->buffers_kib, memory->cached_kib, memory->swap_total_kib,
+            memory->swap_free_kib) < 0) return -1;
+    return fputc('}', stream) == EOF ? -1 : 0;
+}
+
+static int write_future_lab_network(FILE *stream, const FutureLabNetworkSnapshot *network)
+{
+    size_t index;
+
+    if (fputs("\"network\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(network->state)) != 0 ||
+        fputs(",\"source\":\"/proc/net/dev\"", stream) == EOF) return -1;
+    if (network->state != FUTURE_LAB_STATE_AVAILABLE) return fputc('}', stream) == EOF ? -1 : 0;
+    if (fputs(",\"truncated\":", stream) == EOF ||
+        fputs(network->truncated ? "true" : "false", stream) == EOF ||
+        fprintf(stream, ",\"observed_interface_count\":%zu,\"reported_interface_count\":%zu,"
+            "\"counters\":{\"cumulative\":true,\"rates_calculated\":false,"
+            "\"received_bytes\":%" PRIu64 ",\"transmitted_bytes\":%" PRIu64 "},"
+            "\"interfaces\":[", network->observed_interface_count, network->interface_count,
+            network->received_bytes, network->transmitted_bytes) < 0) return -1;
+    for (index = 0U; index < network->interface_count; index++) {
+        const FutureLabNetworkInterface *interface = &network->interfaces[index];
+
+        if (index > 0U && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"name\":", stream) == EOF || json_write_string(stream, interface->name) != 0 ||
+            fprintf(stream, ",\"counters\":{\"cumulative\":true,\"received_bytes\":%" PRIu64
+                ",\"received_packets\":%" PRIu64 ",\"received_errors\":%" PRIu64
+                ",\"received_dropped\":%" PRIu64 ",\"transmitted_bytes\":%" PRIu64
+                ",\"transmitted_packets\":%" PRIu64 ",\"transmitted_errors\":%" PRIu64
+                ",\"transmitted_dropped\":%" PRIu64 "}}",
+                interface->received_bytes, interface->received_packets,
+                interface->received_errors, interface->received_dropped,
+                interface->transmitted_bytes, interface->transmitted_packets,
+                interface->transmitted_errors, interface->transmitted_dropped) < 0) return -1;
+    }
+    return fputs("]}", stream) == EOF ? -1 : 0;
+}
+
+static int write_future_lab_disks(FILE *stream, const FutureLabDiskSnapshot *disks)
+{
+    size_t index;
+
+    if (fputs("\"disks\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(disks->state)) != 0 ||
+        fputs(",\"source\":\"/proc/diskstats\"", stream) == EOF) return -1;
+    if (disks->state != FUTURE_LAB_STATE_AVAILABLE) return fputc('}', stream) == EOF ? -1 : 0;
+    if (fputs(",\"truncated\":", stream) == EOF ||
+        fputs(disks->truncated ? "true" : "false", stream) == EOF ||
+        fprintf(stream, ",\"observed_device_count\":%zu,\"reported_device_count\":%zu,"
+            "\"skipped_pseudo_device_count\":%zu,\"counters_are_cumulative\":true,"
+            "\"rates_calculated\":false,\"sector_size_not_interpreted\":true,\"devices\":[",
+            disks->observed_device_count, disks->device_count,
+            disks->skipped_pseudo_device_count) < 0) return -1;
+    for (index = 0U; index < disks->device_count; index++) {
+        const FutureLabDiskDevice *device = &disks->devices[index];
+
+        if (index > 0U && fputc(',', stream) == EOF) return -1;
+        if (fputs("{\"name\":", stream) == EOF || json_write_string(stream, device->name) != 0 ||
+            fprintf(stream, ",\"counters\":{\"cumulative\":true,\"reads_completed\":%" PRIu64
+                ",\"sectors_read\":%" PRIu64 ",\"writes_completed\":%" PRIu64
+                ",\"sectors_written\":%" PRIu64 "}}",
+                device->reads_completed, device->sectors_read, device->writes_completed,
+                device->sectors_written) < 0) return -1;
+    }
+    return fputs("]}", stream) == EOF ? -1 : 0;
+}
+
+static int write_future_lab(FILE *stream, const FutureLabSnapshot *snapshot)
+{
+    const bool complete = snapshot->cpu.state == FUTURE_LAB_STATE_AVAILABLE &&
+        snapshot->load.state == FUTURE_LAB_STATE_AVAILABLE &&
+        snapshot->memory.state == FUTURE_LAB_STATE_AVAILABLE &&
+        snapshot->network.state == FUTURE_LAB_STATE_AVAILABLE &&
+        snapshot->disks.state == FUTURE_LAB_STATE_AVAILABLE;
+
+    if (fputs("\"future_lab\":{\"read_only\":true,\"snapshot_kind\":\"single_local_snapshot\","
+        "\"rates_calculated\":false,\"complete\":", stream) == EOF ||
+        fputs(complete ? "true," : "false,", stream) == EOF ||
+        write_future_lab_cpu(stream, &snapshot->cpu) != 0 || fputc(',', stream) == EOF ||
+        write_future_lab_load(stream, &snapshot->load) != 0 || fputc(',', stream) == EOF ||
+        write_future_lab_memory(stream, &snapshot->memory) != 0 || fputc(',', stream) == EOF ||
+        write_future_lab_network(stream, &snapshot->network) != 0 || fputc(',', stream) == EOF ||
+        write_future_lab_disks(stream, &snapshot->disks) != 0 || fputc('}', stream) == EOF) return -1;
+    return 0;
+}
+
+static bool future_lab_has_available_source(const FutureLabSnapshot *snapshot)
+{
+    return snapshot->cpu.state == FUTURE_LAB_STATE_AVAILABLE ||
+        snapshot->load.state == FUTURE_LAB_STATE_AVAILABLE ||
+        snapshot->memory.state == FUTURE_LAB_STATE_AVAILABLE ||
+        snapshot->network.state == FUTURE_LAB_STATE_AVAILABLE ||
+        snapshot->disks.state == FUTURE_LAB_STATE_AVAILABLE;
+}
+
+static int write_future_lab_category(FILE *stream, const FutureLabSnapshot *snapshot)
+{
+    const bool available = future_lab_has_available_source(snapshot);
+    const char *summary = available
+        ? "Instantané local du CPU, de la charge, de la mémoire, du réseau et des disques, sans débit ni détection d'anomalie."
+        : "Les sources locales /proc du Future Lab ne sont pas disponibles dans cette analyse.";
+
+    if (fputs("{\"id\":\"future_lab\",\"name\":\"Future Lab\",\"icon\":\"🧪\",\"status\":", stream) == EOF ||
+        json_write_string(stream, available ? "info" : "unknown") != 0 ||
+        fputs(",\"score\":null,\"score_explanation\":", stream) == EOF ||
+        json_write_string(stream, "Cette vue n'entre pas dans le score global : un instantané et des compteurs cumulatifs ne suffisent pas pour juger les performances ou détecter une anomalie.") != 0 ||
+        fputs(",\"diagnostics\":[],\"summary\":", stream) == EOF ||
+        json_write_string(stream, summary) != 0 || fputc('}', stream) == EOF) return -1;
+    return 0;
+}
+
 static int write_graphics_driver_diagnostic(FILE *stream, const GraphicsInfo *graphics)
 {
     const bool ready = graphics_drivers_detected(graphics);
@@ -827,7 +981,12 @@ static int write_volumes(FILE *stream, const VolumeInventory *volumes)
                 volume->size_bytes, volume->available_bytes, volume->used_percent,
                 volume->mounted ? "true" : "false", volume->read_only ? "true" : "false",
                 volume->removable ? "true" : "false") < 0 ||
-            fprintf(stream, ",\"windows_protected\":%s}", volume->windows_protected ? "true" : "false") < 0) return -1;
+            fprintf(stream, ",\"windows_system_component\":%s,\"windows_data_partition\":%s,"
+                "\"windows_confirmed\":%s,\"windows_protected\":%s}",
+                volume->windows_system_component ? "true" : "false",
+                volume->windows_data_partition ? "true" : "false",
+                volume->windows_confirmed ? "true" : "false",
+                volume->windows_protected ? "true" : "false") < 0) return -1;
     }
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
@@ -942,6 +1101,13 @@ static int write_gaming_knowledge(FILE *stream, const GamingKnowledgeBase *knowl
         fputs(knowledge->available ? "true" : "false", stream) == EOF ||
         fputs(",\"truncated\":", stream) == EOF ||
         fputs(knowledge->truncated ? "true" : "false", stream) == EOF ||
+        fputs(",\"source\":", stream) == EOF ||
+        json_write_string(stream, !knowledge->available ? "unavailable" :
+            knowledge->user_database ? "user-update" : "bundled") != 0 ||
+        fprintf(stream, ",\"schema_version\":%u", knowledge->schema_version) < 0 ||
+        fputs(",\"version\":", stream) == EOF || json_write_string(stream, knowledge->version) != 0 ||
+        fputs(",\"reviewed_on\":", stream) == EOF || json_write_string(stream, knowledge->reviewed_on) != 0 ||
+        fputs(",\"manual_update_command\":\"./scripts/update-knowledge.sh\"", stream) == EOF ||
         fprintf(stream, ",\"total_entries\":%zu,\"relevant_entries\":%zu,\"invalid_entries\":%zu,\"entries\":[",
             knowledge->entry_count, knowledge->relevant_count, knowledge->invalid_count) < 0) return -1;
     for (index = 0U; index < knowledge->entry_count; index++) {
@@ -1046,13 +1212,14 @@ static const char *updates_score_explanation(const UpdatesInfo *updates)
 int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *updates, const AppsInfo *apps,
     const SteamInfo *steam, const VolumeInventory *volumes, const MigrationPlan *migration,
     const GeForceNowInfo *gfn, const GraphicsInfo *graphics, const GamingKnowledgeBase *knowledge,
-    const HistoryComparison *history)
+    const FutureLabSnapshot *future_lab, const HistoryComparison *history)
 {
     const char *severity;
     int score;
 
     if (stream == NULL || storage == NULL || updates == NULL || apps == NULL || steam == NULL ||
-        volumes == NULL || migration == NULL || gfn == NULL || graphics == NULL || knowledge == NULL) return -1;
+        volumes == NULL || migration == NULL || gfn == NULL || graphics == NULL || knowledge == NULL ||
+        future_lab == NULL) return -1;
     severity = report_health_severity(storage, graphics);
     score = report_health_score(storage, graphics);
     if (fprintf(stream, "{\n  \"schema_version\": 2,\n  \"application\":{\"name\":\"Linux Doctor Gamer Edition\",\"version\":\"%s\",\"repository\":\"https://github.com/wildcat7534/linuxDoctor_Steam\"},\n  ", LINUX_DOCTOR_VERSION) < 0 ||
@@ -1069,6 +1236,7 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
         fputs(",\n  ", stream) == EOF || write_apps_inventory(stream, apps) != 0 ||
         fputs(",\n  ", stream) == EOF || write_updates_inventory(stream, updates) != 0 ||
         fputs(",\n  ", stream) == EOF || write_graphics_inventory(stream, graphics) != 0 ||
+        fputs(",\n  ", stream) == EOF || write_future_lab(stream, future_lab) != 0 ||
         fputs(",\n  ", stream) == EOF || write_good_news(stream, storage, graphics) != 0 ||
         fputs(",\n  \"categories\": [{\"id\": \"storage\", \"name\": \"Stockage\", \"status\": ", stream) == EOF ||
         json_write_string(stream, severity_for(storage)) != 0 ||
@@ -1109,7 +1277,8 @@ int report_write(FILE *stream, const StorageInfo *storage, const UpdatesInfo *up
             graphics->device_count == 0U ? "Aucun GPU DRM exposé par le système." :
             graphics_severity(graphics)[0] == 'i' ? "Pilote et composants graphiques natifs détectés, sans test de rendu." :
             "Le socle graphique natif mérite une vérification.") != 0 ||
-        fputs("},{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
+        fputs("},", stream) == EOF || write_future_lab_category(stream, future_lab) != 0 ||
+        fputs(",{\"id\":\"updates\",\"name\":\"Mises à jour\",\"status\":", stream) == EOF ||
         json_write_string(stream, updates_severity(updates)) != 0 ||
         fputs(",\"score\":", stream) == EOF ||
         fprintf(stream, "%d", updates_score(updates)) < 0 ||

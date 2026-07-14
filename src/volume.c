@@ -109,14 +109,39 @@ static bool find_field(const char *object, const char *key, const char **value)
     }
 }
 
-static void read_first_array_string(const char *value, char *destination, size_t destination_size)
+static void read_preferred_mountpoint(const char *value, char *destination, size_t destination_size)
 {
-    value = skip_space(value);
-    if (*value == '[') {
-        value = skip_space(value + 1);
-        if (*value == '"') (void)read_string(value, destination, destination_size);
-    } else if (*value == '"') {
-        (void)read_string(value, destination, destination_size);
+    const char *cursor = skip_space(value);
+
+    if (destination_size == 0) return;
+    destination[0] = '\0';
+    if (*cursor == '"') {
+        (void)read_string(cursor, destination, destination_size);
+        return;
+    }
+    if (*cursor != '[') return;
+    cursor++;
+    while (*cursor != '\0') {
+        char candidate[VOLUME_TEXT_CAPACITY] = {0};
+
+        cursor = skip_space(cursor);
+        if (*cursor == ']') return;
+        if (*cursor == '"') {
+            if (read_string(cursor, candidate, sizeof(candidate))) {
+                if (strcmp(candidate, "/") == 0) {
+                    (void)snprintf(destination, destination_size, "%s", candidate);
+                    return;
+                }
+                if (destination[0] == '\0' && candidate[0] != '\0')
+                    (void)snprintf(destination, destination_size, "%s", candidate);
+            }
+            cursor = skip_string(cursor);
+        } else {
+            cursor = skip_value(cursor);
+        }
+        cursor = skip_space(cursor);
+        if (*cursor == ',') cursor++;
+        else if (*cursor != ']') return;
     }
 }
 
@@ -175,7 +200,7 @@ static void collect_object(VolumeInventory *inventory, const char *object)
     if (find_field(object, "parttype", &value)) (void)read_string(value, volume.partition_type, sizeof(volume.partition_type));
     if (find_field(object, "transport", &value)) (void)read_string(value, volume.transport, sizeof(volume.transport));
     if (find_field(object, "model", &value)) (void)read_string(value, volume.model, sizeof(volume.model));
-    if (find_field(object, "mountpoints", &value)) read_first_array_string(value, volume.mountpoint, sizeof(volume.mountpoint));
+    if (find_field(object, "mountpoints", &value)) read_preferred_mountpoint(value, volume.mountpoint, sizeof(volume.mountpoint));
     if (find_field(object, "pkname", &value)) {
         char parent[128];
         if (read_string(value, parent, sizeof(parent))) (void)snprintf(volume.parent_path, sizeof(volume.parent_path), "/dev/%s", parent);

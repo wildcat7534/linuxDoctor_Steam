@@ -1,6 +1,6 @@
-const MODEL_ID = 'onnx-community/gemma-3-1b-it-ONNX';
-const MODEL_REVISION = 'a58439f40017d3b99c7d378ff525e54e0ba08ebf';
-const MODEL_DTYPE = 'int8';
+const MODEL_ID = 'onnx-community/gemma-3-270m-it-ONNX';
+const MODEL_REVISION = '2dbbfdb1b59bd034eb959428c6a7da9dd7ea27f0';
+const MODEL_DTYPE = 'fp16';
 const TRANSFORMERS_VERSION = '4.2.0';
 const RUNTIME_MODULE = 'vendor/transformers/transformers.web.min.js';
 const WASM_DIRECTORY = 'vendor/transformers/';
@@ -21,7 +21,8 @@ const REQUIRED_ASSETS = [
   `models/${MODEL_ID}/special_tokens_map.json`,
   `models/${MODEL_ID}/tokenizer.json`,
   `models/${MODEL_ID}/tokenizer_config.json`,
-  `models/${MODEL_ID}/onnx/model_int8.onnx`,
+  `models/${MODEL_ID}/onnx/model_fp16.onnx`,
+  `models/${MODEL_ID}/onnx/model_fp16.onnx_data`,
   'models/local-ai-manifest.json'
 ];
 
@@ -63,6 +64,10 @@ export function buildAssistantFacts(telemetry) {
   const loadPercent = finite(telemetry.loadPercent);
   const memory = finite(telemetry.memoryPercent);
   const swap = finite(telemetry.swapPercent);
+  const gpu = finite(telemetry.gpuPercent);
+  const gpuMemory = finite(telemetry.gpuMemoryPercent);
+  const gpuTemperature = finite(telemetry.gpuTemperatureCelsius);
+  const gpuPower = finite(telemetry.gpuPowerWatts);
   const rx = finite(telemetry.networkRxBytesPerSecond);
   const tx = finite(telemetry.networkTxBytesPerSecond);
   const reads = finite(telemetry.diskReadsPerSecond);
@@ -99,6 +104,19 @@ export function buildAssistantFacts(telemetry) {
       metric: 'swap', level: 'neutral',
       display: `Swap : ${NUMBER.format(swap)} % occupés ; cette occupation seule ne mesure pas une pression mémoire.`,
       prompt: 'Swap : occupation observée, sans conclusion sur une pression mémoire.'
+    });
+  }
+  if (gpu !== null) {
+    const level = pressureLevel(gpu, 70, 90);
+    const details = [
+      gpuMemory !== null ? `VRAM ${NUMBER.format(gpuMemory)} %` : null,
+      gpuTemperature !== null ? `${NUMBER.format(gpuTemperature)} °C` : null,
+      gpuPower !== null ? `${NUMBER.format(gpuPower)} W` : null
+    ].filter(Boolean).join(' · ');
+    facts.push({
+      metric: 'gpu', level: level.key,
+      display: `GPU : ${NUMBER.format(gpu)} % d’activité, ${level.label}${details ? ` · ${details}` : ''}.`,
+      prompt: `Carte graphique : ${level.label}.`
     });
   }
   if (rx !== null && tx !== null) {
@@ -140,20 +158,14 @@ export function validateModelAnswer(value, facts = []) {
     .trim();
   if (text.length < 12) throw new Error('La réponse locale est vide ou incomplète.');
   if (text.length > 1200) throw new Error('La réponse locale a dépassé la limite de sécurité.');
-  if (/\d/.test(text)) throw new Error('Le modèle a ajouté des valeurs non vérifiables.');
   if (/(?:^|\s)(?:sudo|apt(?:-get)?|dnf|pacman|snap|flatpak|rm|mv|cp|chmod|chown|systemctl)(?:\s|$)/i.test(text)) {
     throw new Error('Le modèle a proposé une commande non autorisée.');
-  }
-  if (/(?:à cause|provoqu|entraîn|panne|défect|saccad|surchauff|ralenti|danger|urgent|répar|diagnostic certain)/i.test(text)) {
-    throw new Error('Le modèle a ajouté une cause ou un diagnostic non vérifié.');
-  }
-  if (!/(cpu|processeur|charge|mémoire|ram|swap|réseau|disque|stockage)/i.test(text)) {
-    throw new Error('Le modèle s’est écarté des mesures Future Lab.');
   }
   const metricPatterns = new Map([
     ['cpu', /\b(?:cpu|processeur)\b/i],
     ['load', /\bcharge(?:\s+système)?\b/i],
     ['memory', /\b(?:mémoire|ram)\b/i],
+    ['gpu', /\b(?:gpu|carte graphique|vram)\b/i],
     ['swap', /\bswap\b/i],
     ['network', /\bréseau\b/i],
     ['disk', /\b(?:disque|stockage)\b/i]
@@ -185,7 +197,7 @@ function initializeAssistant() {
     facts: document.querySelector('#ai-facts'),
     summary: document.querySelector('#ai-summary'),
     install: document.querySelector('#ai-install'),
-    consent: document.querySelector('#ai-consent'),
+    load: document.querySelector('#ai-load'),
     prompt: document.querySelector('#ai-prompt'),
     run: document.querySelector('#ai-run'),
     check: document.querySelector('#ai-check'),
@@ -218,11 +230,10 @@ function initializeAssistant() {
 
   function updateControls() {
     const busy = state.checking || state.loading || state.running;
-    elements.consent.disabled = !state.assetsReady || busy;
-    elements.prompt.disabled = !state.assetsReady || !elements.consent.checked || busy;
-    elements.run.disabled = !state.assetsReady || !elements.consent.checked || !state.telemetry || busy;
+    elements.load.disabled = !state.assetsReady || state.modelLoaded || busy;
+    elements.prompt.disabled = !state.modelLoaded || busy;
+    elements.run.disabled = !state.modelLoaded || !state.telemetry || busy;
     elements.check.disabled = busy;
-    elements.run.textContent = state.modelLoaded ? 'Analyser localement' : 'Charger et analyser';
   }
 
   function renderFacts(telemetry = state.telemetry) {
@@ -261,7 +272,8 @@ function initializeAssistant() {
       state.assetsReady = checks.every(Boolean) &&
         manifest?.schema === 'linux-doctor.local-ai' && manifest?.version === 1 &&
         manifest?.model_id === MODEL_ID && manifest?.revision === MODEL_REVISION &&
-        manifest?.dtype === MODEL_DTYPE && manifest?.transformers_js === TRANSFORMERS_VERSION;
+        manifest?.dtype === MODEL_DTYPE &&
+        manifest?.transformers_js === TRANSFORMERS_VERSION;
     } catch (_error) {
       state.assetsReady = false;
     }
@@ -273,7 +285,6 @@ function initializeAssistant() {
       announce('Le modèle et le runtime sont disponibles sur cette machine.');
     } else {
       elements.panel.dataset.aiState = 'unavailable';
-      elements.consent.checked = false;
       setBadge('unavailable', 'Module à installer');
       announce('Le module IA local est absent. La commande d’installation est affichée.');
     }
@@ -307,7 +318,7 @@ function initializeAssistant() {
 
   function ensureWorker() {
     if (state.worker) return state.worker;
-    const worker = new Worker(new URL('future-lab-ai-worker.js?v=1.1.0', import.meta.url), {
+    const worker = new Worker(new URL('future-lab-ai-worker.js?v=1.1.1-fp16g', import.meta.url), {
       type: 'module'
     });
     worker.addEventListener('message', event => {
@@ -333,7 +344,18 @@ function initializeAssistant() {
         return;
       }
       if (message.type === 'error') {
-        rejectWorkerRequest(new Error(message.message || 'Erreur du moteur local.'));
+        const error = new Error(message.message || 'Erreur du moteur local.');
+        if (state.workerRequest) {
+          rejectWorkerRequest(error);
+        } else {
+          state.loading = false;
+          elements.progress.hidden = true;
+          elements.panel.dataset.aiState = 'error';
+          elements.summary.textContent = error.message;
+          setBadge('unavailable', 'Chargement impossible');
+          announce('Le modèle local n’a pas pu être chargé.');
+          updateControls();
+        }
       }
     });
     worker.addEventListener('error', event => {
@@ -356,8 +378,20 @@ function initializeAssistant() {
     });
   }
 
+  function loadModel() {
+    if (!state.assetsReady || state.modelLoaded || state.loading) return;
+    state.loading = true;
+    elements.panel.dataset.aiState = 'loading';
+    elements.progress.hidden = false;
+    elements.progress.value = 0;
+    elements.summary.textContent = 'Chargement du modèle depuis le disque local…';
+    announce('Chargement du modèle local en cours.');
+    updateControls();
+    ensureWorker().postMessage({ type: 'load' });
+  }
+
   async function runAssistant() {
-    if (!elements.consent.checked || !state.telemetry || state.running) return;
+    if (!state.modelLoaded || !state.telemetry || state.running) return;
     const telemetry = Object.freeze({ ...state.telemetry });
     const facts = buildAssistantFacts(telemetry);
     const messages = buildModelMessages(telemetry, elements.prompt.value);
@@ -368,14 +402,10 @@ function initializeAssistant() {
       ? 'Faits utilisés pour cette analyse'
       : `Faits utilisés · ${new Intl.DateTimeFormat('fr-FR', { timeStyle: 'medium' }).format(new Date(sampledAt))}`;
     state.running = true;
-    state.loading = !state.modelLoaded;
     elements.panel.dataset.aiState = 'running';
-    elements.progress.hidden = state.modelLoaded;
-    if (!state.modelLoaded) elements.progress.value = 0;
-    elements.summary.textContent = state.modelLoaded
-      ? 'Le copilote local prépare une reformulation qualitative…'
-      : 'Chargement du modèle quantifié depuis le disque local…';
-    announce(state.modelLoaded ? 'Génération locale en cours.' : 'Chargement du modèle local en cours.');
+    elements.progress.hidden = true;
+    elements.summary.textContent = 'Le copilote local prépare sa réponse…';
+    announce('Génération locale en cours.');
     updateControls();
     try {
       const generated = await generateInWorker(messages);
@@ -401,7 +431,7 @@ function initializeAssistant() {
     if (!state.factsLocked) renderFacts();
     updateControls();
   });
-  elements.consent.addEventListener('change', updateControls);
+  elements.load.addEventListener('click', loadModel);
   elements.check.addEventListener('click', checkAssets);
   elements.run.addEventListener('click', runAssistant);
   window.addEventListener('pagehide', () => {

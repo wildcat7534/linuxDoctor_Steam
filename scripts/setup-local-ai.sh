@@ -2,8 +2,8 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-MODEL_ID="onnx-community/gemma-3-1b-it-ONNX"
-MODEL_REVISION="a58439f40017d3b99c7d378ff525e54e0ba08ebf"
+MODEL_ID="onnx-community/gemma-3-270m-it-ONNX"
+MODEL_REVISION="2dbbfdb1b59bd034eb959428c6a7da9dd7ea27f0"
 MODEL_DIR="$ROOT/frontend/models/$MODEL_ID"
 RUNTIME_DIR="$ROOT/frontend/vendor/transformers"
 TRANSFORMERS_VERSION="4.2.0"
@@ -45,14 +45,32 @@ install -m 0644 "$TEMPORARY/runtime/node_modules/onnxruntime-web/dist/ort.webgpu
 install -m 0644 "$TEMPORARY/runtime/node_modules/@huggingface/transformers/LICENSE" \
   "$RUNTIME_DIR/LICENSE"
 
-printf 'Téléchargement de %s en int8 (environ 1,05 Go)…\n' "$MODEL_ID"
+printf 'Téléchargement de %s en fp16 (environ 570 Mo)…\n' "$MODEL_ID"
 hf download "$MODEL_ID" \
   --revision "$MODEL_REVISION" \
   --local-dir "$MODEL_DIR" \
   config.json generation_config.json special_tokens_map.json tokenizer.json \
-  tokenizer_config.json onnx/model_int8.onnx
+  tokenizer_config.json onnx/model_fp16.onnx onnx/model_fp16.onnx_data
 
-printf '{"schema":"linux-doctor.local-ai","version":1,"model_id":"%s","revision":"%s","dtype":"int8","transformers_js":"%s"}\n' \
+# The upstream tokenizer omits legacy flags that Transformers.js 4.2 reads
+# while encoding a plain prompt. Normalize them in the installed local copy.
+sed \
+  -e '/  "add_bos_token":/d' \
+  -e '/  "add_eos_token":/d' \
+  -e 's/  "backend":/  "add_bos_token": true,\
+  "add_eos_token": false,\
+  "backend":/' \
+  "$MODEL_DIR/tokenizer_config.json" >"$TEMPORARY/tokenizer_config.json"
+install -m 0644 "$TEMPORARY/tokenizer_config.json" "$MODEL_DIR/tokenizer_config.json"
+
+# Remove weights used by earlier development builds so a successful setup
+# leaves only the supported fp16 model on disk.
+rm -rf -- "$ROOT/frontend/models/onnx-community/gemma-3-1b-it-ONNX"
+rm -f -- \
+  "$MODEL_DIR/onnx/model_quantized.onnx" "$MODEL_DIR/onnx/model_quantized.onnx_data" \
+  "$MODEL_DIR/onnx/model_q4f16.onnx" "$MODEL_DIR/onnx/model_q4f16.onnx_data"
+
+printf '{"schema":"linux-doctor.local-ai","version":1,"model_id":"%s","revision":"%s","dtype":"fp16","transformers_js":"%s"}\n' \
   "$MODEL_ID" "$MODEL_REVISION" "$TRANSFORMERS_VERSION" \
   >"$TEMPORARY/local-ai-manifest.json"
 install -m 0644 "$TEMPORARY/local-ai-manifest.json" \

@@ -9,12 +9,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define PROC_STAT_PATH "/proc/stat"
 #define PROC_LOADAVG_PATH "/proc/loadavg"
 #define PROC_MEMINFO_PATH "/proc/meminfo"
 #define PROC_NET_DEV_PATH "/proc/net/dev"
 #define PROC_DISKSTATS_PATH "/proc/diskstats"
+#define NVIDIA_SMI_COMMAND "timeout 1s nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits 2>/dev/null"
 
 static void set_error(char *error, size_t error_size, const char *message)
 {
@@ -390,6 +392,36 @@ int future_lab_parse_diskstats(FILE *stream, FutureLabDiskSnapshot *snapshot)
     return 0;
 }
 
+int future_lab_parse_nvidia_smi(FILE *stream, FutureLabGpuSnapshot *snapshot)
+{
+    FutureLabGpuSnapshot parsed = {0};
+    char line[512];
+    char trailing;
+    int fields;
+    size_t name_length;
+
+    if (stream == NULL || snapshot == NULL) return -1;
+    *snapshot = (FutureLabGpuSnapshot){0};
+    if (fgets(line, sizeof(line), stream) == NULL) return -1;
+    fields = sscanf(line, " %" SCNu64 " , %127[^,] , %lf , %lf , %lf , %lf , %lf %c",
+        &parsed.index, parsed.name, &parsed.utilization_percent,
+        &parsed.memory_used_mib, &parsed.memory_total_mib,
+        &parsed.temperature_celsius, &parsed.power_watts, &trailing);
+    if (fields != 7 || parsed.utilization_percent < 0.0 ||
+        parsed.utilization_percent > 100.0 || parsed.memory_used_mib < 0.0 ||
+        parsed.memory_total_mib <= 0.0 || parsed.memory_used_mib > parsed.memory_total_mib ||
+        parsed.temperature_celsius < -100.0 || parsed.temperature_celsius > 200.0 ||
+        parsed.power_watts < 0.0) return -1;
+    name_length = strlen(parsed.name);
+    while (name_length > 0U && isspace((unsigned char)parsed.name[name_length - 1U])) {
+        parsed.name[--name_length] = '\0';
+    }
+    if (name_length == 0U || ferror(stream)) return -1;
+    parsed.state = FUTURE_LAB_STATE_AVAILABLE;
+    *snapshot = parsed;
+    return 0;
+}
+
 const char *future_lab_state_name(FutureLabState state)
 {
     return state == FUTURE_LAB_STATE_AVAILABLE ? "available" : "unknown";
@@ -440,6 +472,19 @@ static void collect_disks(FutureLabSnapshot *snapshot)
     (void)fclose(stream);
 }
 
+static void collect_gpu(FutureLabSnapshot *snapshot)
+{
+    FILE *stream = popen(NVIDIA_SMI_COMMAND, "r");
+
+    snapshot->gpu.nvtop_available = access("/usr/bin/nvtop", X_OK) == 0 ||
+        access("/usr/local/bin/nvtop", X_OK) == 0;
+    if (stream == NULL) return;
+    (void)future_lab_parse_nvidia_smi(stream, &snapshot->gpu);
+    snapshot->gpu.nvtop_available = access("/usr/bin/nvtop", X_OK) == 0 ||
+        access("/usr/local/bin/nvtop", X_OK) == 0;
+    (void)pclose(stream);
+}
+
 int future_lab_collect(FutureLabSnapshot *snapshot, char *error, size_t error_size)
 {
     if (snapshot == NULL) {
@@ -453,6 +498,7 @@ int future_lab_collect(FutureLabSnapshot *snapshot, char *error, size_t error_si
     collect_memory(snapshot);
     collect_network(snapshot);
     collect_disks(snapshot);
+    collect_gpu(snapshot);
     if (snapshot->cpu.state != FUTURE_LAB_STATE_AVAILABLE ||
         snapshot->load.state != FUTURE_LAB_STATE_AVAILABLE ||
         snapshot->memory.state != FUTURE_LAB_STATE_AVAILABLE ||

@@ -1,6 +1,6 @@
 # Architecture
 
-Linux Doctor 1.1.0 associe un moteur C17 déterministe, deux interfaces web statiques, un flux Future Lab local et un copilote facultatif exécuté dans le navigateur. Le modèle ne participe ni à la collecte, ni aux calculs, ni au diagnostic.
+Linux Doctor 1.1.1 associe un moteur C17 déterministe, deux interfaces web statiques, un flux Future Lab local et un copilote facultatif exécuté dans le navigateur. Le modèle ne participe ni à la collecte, ni aux calculs, ni au diagnostic.
 
 ## Processus lancés
 
@@ -31,13 +31,13 @@ Il n’existe pas d’endpoint dynamique ni de serveur d’événements. La page
 | Historique | comparaison de rapports compatibles dans l’état XDG |
 | Base gaming | contexte éditorial versionné du tableau de bord |
 
-La base gaming et les diagnostics du rapport ne sont pas des entrées de l’assistant Future Lab 1.1.0.
+La base gaming et les diagnostics du rapport ne sont pas des entrées de l’assistant Future Lab 1.1.1.
 
 ## Rapport et snapshot live
 
 Le rapport JSON V2 porte les conclusions durables de l’analyse : santé, catégories, stockage, Steam, graphismes, APT, applications, GeForce NOW, base gaming, historique et photographie Future Lab.
 
-`linux-doctor --future-lab-json` collecte exclusivement Future Lab et produit un document `linux-doctor.future-lab.live` version 1. Il contient l’UTC, le temps Unix, une horloge monotone, l’identifiant de démarrage et les compteurs bruts CPU, réseau et disque. Le backend ne calcule aucun débit.
+`linux-doctor --future-lab-json` collecte exclusivement Future Lab et produit un document `linux-doctor.future-lab.live` version 1. Il contient l’UTC, le temps Unix, une horloge monotone, l’identifiant de démarrage, les compteurs bruts CPU, réseau et disque, ainsi que les mesures directes GPU NVIDIA fournies par `nvidia-smi`. Le backend ne calcule aucun débit.
 
 ## Acceptation d’un flux
 
@@ -58,11 +58,11 @@ Le débit réseau additionne toutes les interfaces rapportées par `/proc/net/de
 
 Les taux disque utilisent uniquement les périphériques physiques reconnus. Les partitions et volumes logiques restent visibles dans les détails mais ne sont pas ajoutés au graphique de débit.
 
-## Assistant local 1.1.0
+## Assistant local 1.1.1
 
-`scripts/setup-local-ai.sh` installe la révision épinglée de Gemma 3 1B Instruct int8 et Transformers.js 4.2.0. Le manifeste local doit correspondre exactement au modèle, à la révision, à la quantification et au runtime attendus. L’identifiant, la taille et la licence sont centralisés dans [data-sources.md](data-sources.md).
+`scripts/setup-local-ai.sh` installe la révision épinglée de Gemma 3 270M Instruct en fp16, avec Transformers.js 4.2.0. Le manifeste local doit correspondre exactement au modèle, à la révision, à la précision et au runtime attendus. L’identifiant, la taille et la licence sont centralisés dans [data-sources.md](data-sources.md).
 
-Le modèle ne se charge qu’après consentement et clic. À cet instant, l’interface fige la mesure courante puis calcule des constats qualitatifs déterministes pour CPU, charge, RAM, swap, réseau et disque. Seuls ces constats sans valeur numérique, accompagnés de la question saisie, entrent dans le prompt.
+Le modèle se charge uniquement avec le bouton dédié, sans case de consentement intermédiaire dans cette édition personnelle. Le cache Transformers.js est désactivé : les artefacts sont déjà locaux et servis par Linux Doctor. Lors d’une question, l’interface fige la mesure courante puis calcule des constats déterministes pour CPU, charge, RAM, swap, GPU, réseau et disque.
 
 Le contexte n’inclut pas :
 
@@ -72,7 +72,7 @@ Le contexte n’inclut pas :
 - les inventaires détaillés des interfaces ou disques ;
 - une commande à exécuter.
 
-Le système demande une reformulation française courte, sans cause inventée ni commande. Après génération, un validateur rejette toute réponse contenant un chiffre, une commande système ou de gestion de paquets, ou aucun terme lié aux mesures Future Lab. Une réponse rejetée est remplacée par la lecture factuelle déterministe.
+Le système demande une réponse française courte fondée sur l’instantané. Le mode personnel accepte les nombres et des formulations plus libres ; le validateur conserve les limites de taille, bloque les commandes système et écarte les contradictions directes avec les niveaux calculés.
 
 ## Actions séparées
 

@@ -2,6 +2,15 @@
 
 Cette page résume les versions publiées. La conception technique se trouve dans l’[architecture](architecture.md) et les travaux suivants dans la [feuille de route](roadmap.md).
 
+## 1.1.1 — Édition personnelle accélérée
+
+- chargement du modèle par bouton dédié, sans case de consentement intermédiaire ;
+- correction du cache navigateur indisponible en utilisant directement les artefacts locaux ;
+- remplacement du modèle 1B par Gemma 3 270M fp16 pour accélérer chargement et réponse ;
+- questions plus libres tout en bloquant les commandes et contradictions directes ;
+- activité GPU NVIDIA, VRAM, température, puissance et détection de `nvtop` ;
+- nettoyage ciblé des Chromium headless de test avec élévation `sudo` si Snap l’exige.
+
 ## 1.1.0 — Future Lab vivant · publiée
 
 - fenêtre Future Lab autonome, responsive et accessible depuis le tableau de bord ;

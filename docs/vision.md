@@ -1,5 +1,9 @@
 # Vision — Linux Doctor
 
+## Priorité actuelle : usage personnel
+
+Linux Doctor est d’abord développé comme l’outil quotidien de sa propriétaire. Cette édition personnelle peut intégrer rapidement des fonctions expérimentales, des diagnostics avancés et des actions explicitement déclenchées. La préparation d’une édition publique, avec ses réglages et restrictions propres, viendra une fois l’expérience personnelle stabilisée.
+
 Linux Doctor veut devenir le premier outil installé après Steam sur Ubuntu 26.04. Sa promesse ne s’arrête plus au constat : **diagnostiquer, expliquer, agir et mesurer le résultat** depuis une interface pensée pour une personne qui veut jouer, pas administrer Linux à plein temps.
 
 ## Promesse utilisateur
@@ -27,7 +31,7 @@ Snapshot Future Lab ──> constats qualitatifs déterministes
 
 - Le **Diagnostic Engine** C17 reste déterministe : mêmes faits, même diagnostic.
 - Le **Knowledge Engine** apporte des informations datées sur Ubuntu, Wayland, pilotes, Steam, Proton, contrôleurs et jeux.
-- Le **LLM local 1.1.0** reformule uniquement les constats qualitatifs d’un instantané Future Lab capturé au clic. Il ne reçoit pas les deux autres moteurs.
+- Le **LLM local 1.1.1** répond à partir d’un instantané Future Lab capturé au clic. Il ne reçoit pas les deux autres moteurs.
 
 Cette séparation permet une explication naturelle sans rendre le score opaque ni exposer tout le rapport au modèle. L’assistant est une capacité supplémentaire ; le diagnostic complet fonctionne aussi sans lui.
 

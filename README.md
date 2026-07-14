@@ -2,7 +2,9 @@
 
 Linux Doctor transforme Ubuntu 26.04 en poste de jeu compréhensible, mesurable et simple à améliorer. Il rassemble l’état de Steam, Proton, des manettes, du graphisme, des mises à jour et du stockage, puis relie chaque constat à son impact gaming.
 
-## Version stable : 1.1.0
+## Version personnelle : 1.1.1
+
+Le développement vise d’abord l’usage quotidien de sa propriétaire : les fonctions expérimentales utiles sont activées et testées ici avant toute préparation d’une édition publique plus restrictive.
 
 - bilan illustré avant les inventaires détaillés ;
 - graphismes, session Wayland/X11 et fondations Vulkan/OpenGL ;
@@ -13,11 +15,11 @@ Linux Doctor transforme Ubuntu 26.04 en poste de jeu compréhensible, mesurable 
 - budget GeForce NOW sur 100 h, avec abonnements mensuels et annuels ;
 - base gaming versionnée, datée et reliée aux sources officielles ;
 - historique local sur 30 analyses compatibles ;
-- fenêtre Future Lab autonome avec graphiques CPU, charge, mémoire, réseau et disque ;
+- fenêtre Future Lab autonome avec graphiques CPU, charge, mémoire, GPU NVIDIA, réseau et disque ;
 - flux local actualisé chaque seconde et timeline de 60 points par défaut, 120 au maximum ;
-- copilote Gemma 3 1B int8 facultatif, exécuté localement dans un Worker du navigateur.
+- copilote Gemma 3 270M facultatif, exécuté localement dans un Worker du navigateur ;
 
-Le copilote Future Lab reformule uniquement les constats qualitatifs calculés à partir de l’instantané capturé au clic. Il ne reçoit ni la timeline, ni les diagnostics du rapport, ni leurs preuves, ni la base gaming. Il ne produit pas de chiffres et ne propose aucune commande ; une réponse qui enfreint ces règles est écartée.
+Le copilote Future Lab répond à partir des constats calculés sur l’instantané capturé au clic. Il ne reçoit ni la timeline, ni les diagnostics du rapport, ni leurs preuves, ni la base gaming. Les commandes système restent bloquées, mais le mode personnel accepte une réponse explicative plus libre.
 
 ## Lancer
 
@@ -54,13 +56,21 @@ make test
 
 ## Assistant local facultatif
 
-L’installation télécharge la révision épinglée de Gemma 3 1B int8 et Transformers.js 4.2.0 dans les ressources frontend locales :
+L’installation télécharge la révision épinglée de Gemma 3 270M en fp16, ainsi que Transformers.js 4.2.0, dans les ressources frontend locales :
 
 ```sh
 ./scripts/setup-local-ai.sh
 ```
 
-Le modèle représente environ 1,05 Go avec son tokenizer. Il ne se charge en mémoire qu’après consentement et clic dans Future Lab. Après l’installation, l’inférence n’envoie ni mesure, ni question, ni réponse sur Internet.
+Le modèle représente environ 570 Mo avec le tokenizer. Le bouton **Charger le modèle** le place en mémoire ; le bouton **Poser la question** devient alors disponible. Les fichiers sont lus directement depuis le serveur local sans dépendre du cache du navigateur. L’inférence n’envoie ni mesure, ni question, ni réponse sur Internet.
+
+Si un test navigateur interrompu a laissé des Chromium headless actifs :
+
+```sh
+./scripts/cleanup-headless.sh
+```
+
+Le script cible uniquement les profils Puppeteer de test et peut demander `sudo` pour franchir l’isolation Snap. Le serveur et la collecte GPU (`nvidia-smi`) n’ont pas besoin de root.
 
 ## Actions disponibles
 
@@ -83,4 +93,4 @@ Le téléchargement est borné et validé avant remplacement de la copie utilisa
 
 ## Documentation
 
-L’index [docs/README.md](docs/README.md) présente la 1.1.0 livrée et sépare les capacités actuelles des prochains cycles. Le format de la base gaming est documenté dans [data/README.md](data/README.md).
+L’index [docs/README.md](docs/README.md) présente l’édition personnelle 1.1.1 et sépare les capacités actuelles des prochains cycles. Le format de la base gaming est documenté dans [data/README.md](data/README.md).

@@ -9,7 +9,8 @@ Linux Doctor combine des mesures locales rapides et des données gaming téléch
 | `/proc`, système, Steam | local | rapport JSON | faits et diagnostics |
 | snapshots Future Lab | local, environ 1 s | `future-lab-live.json` | graphiques et taux temporaires |
 | base gaming | HTTPS à la demande | données XDG | contexte Ubuntu/Steam/jeux |
-| modèle Gemma 3 | HTTPS à l’installation | `frontend/models` et cache navigateur | reformulation qualitative d’un snapshot |
+| GPU NVIDIA | local, environ 1 s | `nvidia-smi` | charge, VRAM, température et puissance |
+| modèle Gemma 3 | HTTPS à l’installation | `frontend/models` | réponse locale sur un snapshot |
 | tarifs et veille | sources officielles datées | base intégrée/documentation | comparatifs et explications |
 
 L’analyse normale n’envoie aucun inventaire. Une source distante indisponible conserve la dernière copie valide et expose sa date au lieu de bloquer le diagnostic.
@@ -30,22 +31,24 @@ La timeline reste en mémoire dans la page, avec 60 points par défaut et 120 au
 
 Le téléchargement HTTPS est limité à 512 Kio, borné dans le temps, validé par le moteur C et installé atomiquement sans `sudo`. Le schéma 1 n’apporte pas encore de signature cryptographique. Le cycle 1.3 prévoit un manifeste signé, une expiration, un retour arrière et un mode de synchronisation automatique configurable. Le format appartient à [data/README.md](../data/README.md).
 
-## Modèle local 1.1.0
+## Modèle local 1.1.1
 
 | Élément | Valeur |
 | --- | --- |
-| Modèle | [`onnx-community/gemma-3-1b-it-ONNX`](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX) |
-| Révision | `a58439f40017d3b99c7d378ff525e54e0ba08ebf` |
-| Quantification | int8 |
-| Taille indicative | environ 1,05 Go avec le tokenizer |
+| Modèle | [`onnx-community/gemma-3-270m-it-ONNX`](https://huggingface.co/onnx-community/gemma-3-270m-it-ONNX) |
+| Révision | `2dbbfdb1b59bd034eb959428c6a7da9dd7ea27f0` |
+| Précision | fp16 pour WebGPU et WASM |
+| Taille indicative | environ 570 Mo avec le tokenizer |
 | Licence | Gemma |
 | Runtime | [Transformers.js 4.2.0](https://huggingface.co/docs/transformers.js/) |
 | Accélération | WebGPU matériel, avec WASM multithreadé en repli |
 | Installation | `./scripts/setup-local-ai.sh` |
 
-Le téléchargement est explicite, utilise la révision épinglée et place modèle et runtime dans les ressources frontend ignorées par Git. Le chargement en mémoire demande ensuite un consentement et un clic dans Future Lab.
+Le téléchargement est explicite, utilise la révision épinglée et place modèle et runtime dans les ressources frontend ignorées par Git. Le chargement en mémoire utilise ensuite le bouton dédié. Aucun cache navigateur Transformers.js n’est requis.
 
-Au clic, l’interface fige l’instantané courant et produit des constats qualitatifs déterministes. Le modèle reçoit uniquement ces constats sans chiffres et la question saisie : ni timeline, ni diagnostics, ni preuves, ni base gaming. Sa sortie est rejetée si elle contient un nombre, une commande ou s’écarte des mesures. Une fois les fichiers présents, l’inférence s’exécute dans un Worker du navigateur sans envoyer mesure, question ou réponse à un service distant.
+À chaque question, l’interface fige l’instantané courant et produit des constats déterministes. Le modèle reçoit uniquement ces constats et la question saisie : ni timeline, ni diagnostics, ni preuves, ni base gaming. Les commandes restent bloquées. Une fois les fichiers présents, l’inférence s’exécute dans un Worker du navigateur sans envoyer mesure, question ou réponse à un service distant.
+
+`nvtop` est détecté et indiqué dans Future Lab comme outil d’inspection interactif. Linux Doctor ne tente pas d’analyser son interface plein écran : il utilise la sortie CSV bornée de `nvidia-smi`. Ces deux outils fonctionnent sans root avec le pilote NVIDIA actif.
 
 ## Tarifs GeForce NOW France
 

@@ -103,6 +103,9 @@ export function createTelemetrySample(snapshot, previous) {
     ? Math.max(0, memory.swapTotalKib - memory.swapFreeKib)
     : null;
   const swapPercent = memory?.swapTotalKib === 0 ? 0 : percentage(swapUsedKib, memory?.swapTotalKib);
+  const gpu = snapshot.gpu;
+  const gpuPercent = Number.isFinite(gpu?.utilizationPercent) ? clamp(gpu.utilizationPercent, 0, 100) : null;
+  const gpuMemoryPercent = percentage(gpu?.memoryUsedMib, gpu?.memoryTotalMib);
 
   return {
     time: snapshot.time,
@@ -113,6 +116,10 @@ export function createTelemetrySample(snapshot, previous) {
     loadPercent,
     memoryPercent,
     swapPercent,
+    gpuPercent,
+    gpuMemoryPercent,
+    gpuTemperatureCelsius: gpu?.temperatureCelsius ?? null,
+    gpuPowerWatts: gpu?.powerWatts ?? null,
     networkRxRate: comparable && snapshot.network && previous.network &&
         !snapshot.network.truncated && !previous.network.truncated
       ? memberRate(snapshot.network.interfaces, previous.network.interfaces,

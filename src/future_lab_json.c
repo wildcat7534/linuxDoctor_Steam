@@ -125,6 +125,24 @@ static int write_disks(FILE *stream, const FutureLabDiskSnapshot *disks)
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
 
+static int write_gpu(FILE *stream, const FutureLabGpuSnapshot *gpu)
+{
+    if (fputs("\"gpu\":{\"state\":", stream) == EOF ||
+        json_write_string(stream, future_lab_state_name(gpu->state)) != 0 ||
+        fputs(",\"source\":\"nvidia-smi\",\"nvtop_available\":", stream) == EOF ||
+        fputs(gpu->nvtop_available ? "true" : "false", stream) == EOF) return -1;
+    if (gpu->state == FUTURE_LAB_STATE_AVAILABLE) {
+        if (fprintf(stream, ",\"index\":%" PRIu64 ",\"name\":", gpu->index) < 0 ||
+            json_write_string(stream, gpu->name) != 0 ||
+            fprintf(stream, ",\"utilization_percent\":%.1f,\"memory_used_mib\":%.1f,"
+                "\"memory_total_mib\":%.1f,\"temperature_celsius\":%.1f,"
+                "\"power_watts\":%.2f", gpu->utilization_percent,
+                gpu->memory_used_mib, gpu->memory_total_mib,
+                gpu->temperature_celsius, gpu->power_watts) < 0) return -1;
+    }
+    return fputc('}', stream) == EOF ? -1 : 0;
+}
+
 static int read_boot_id(char *destination, size_t capacity)
 {
     FILE *stream;
@@ -198,7 +216,8 @@ int future_lab_json_write_snapshot(FILE *stream, const FutureLabSnapshot *snapsh
         write_load(stream, &snapshot->load) != 0 || fputc(',', stream) == EOF ||
         write_memory(stream, &snapshot->memory) != 0 || fputc(',', stream) == EOF ||
         write_network(stream, &snapshot->network) != 0 || fputc(',', stream) == EOF ||
-        write_disks(stream, &snapshot->disks) != 0 || fputc('}', stream) == EOF) return -1;
+        write_disks(stream, &snapshot->disks) != 0 || fputc(',', stream) == EOF ||
+        write_gpu(stream, &snapshot->gpu) != 0 || fputc('}', stream) == EOF) return -1;
     return 0;
 }
 

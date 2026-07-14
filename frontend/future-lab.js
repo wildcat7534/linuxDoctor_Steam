@@ -2,7 +2,7 @@ import {
   createTelemetrySample,
   finiteNumber,
   liveSnapshotIsCurrent
-} from './future-lab-core.js?v=1.1.0';
+} from './future-lab-core.js?v=1.1.1';
 
 (() => {
   'use strict';
@@ -47,6 +47,12 @@ import {
     swapDetail: document.querySelector('#swap-detail'),
     memoryFill: document.querySelector('#memory-fill'),
     memoryQuality: document.querySelector('#memory-quality'),
+    gpuName: document.querySelector('#gpu-name'),
+    gpuValue: document.querySelector('#gpu-value'),
+    gpuMemoryValue: document.querySelector('#gpu-memory-value'),
+    gpuThermal: document.querySelector('#gpu-thermal'),
+    gpuQuality: document.querySelector('#gpu-quality'),
+    nvtopState: document.querySelector('#nvtop-state'),
     networkRx: document.querySelector('#network-rx'),
     networkTx: document.querySelector('#network-tx'),
     interfaceCount: document.querySelector('#interface-count'),
@@ -81,6 +87,15 @@ import {
       series: [
         { key: 'memoryPercent', color: '#65f5af', label: 'RAM utilisée' },
         { key: 'swapPercent', color: '#ff68d4', label: 'swap utilisé' }
+      ],
+      fixedMax: 100,
+      suffix: '%'
+    },
+    gpu: {
+      canvas: document.querySelector('#gpu-chart'),
+      series: [
+        { key: 'gpuPercent', color: '#ff68d4', label: 'activité GPU' },
+        { key: 'gpuMemoryPercent', color: '#927cff', label: 'VRAM utilisée' }
       ],
       fixedMax: 100,
       suffix: '%'
@@ -245,6 +260,7 @@ import {
     const cpuCounters = cpuSource?.counters || {};
     const loadSource = sectionAvailable(lab.load) ? lab.load : null;
     const memorySource = sectionAvailable(lab.memory) ? lab.memory : null;
+    const gpuSource = sectionAvailable(lab.gpu) ? lab.gpu : null;
     const networkSource = sectionAvailable(lab.network) ? lab.network : null;
     const networkInterfaces = Array.isArray(networkSource?.interfaces) ? networkSource.interfaces : [];
     const diskSource = sectionAvailable(lab.disks) ? lab.disks : null;
@@ -287,6 +303,16 @@ import {
         swapTotalKib: finiteNumber(memorySource.swap_total),
         swapFreeKib: finiteNumber(memorySource.swap_free)
       } : null,
+      gpu: gpuSource ? {
+        index: finiteNumber(gpuSource.index),
+        name: String(gpuSource.name || '').trim(),
+        utilizationPercent: finiteNumber(gpuSource.utilization_percent),
+        memoryUsedMib: finiteNumber(gpuSource.memory_used_mib),
+        memoryTotalMib: finiteNumber(gpuSource.memory_total_mib, 1),
+        temperatureCelsius: finiteNumber(gpuSource.temperature_celsius, -100),
+        powerWatts: finiteNumber(gpuSource.power_watts),
+        nvtopAvailable: gpuSource.nvtop_available === true
+      } : lab.gpu ? { nvtopAvailable: lab.gpu.nvtop_available === true } : null,
       network: networkSource ? {
         receivedBytes: networkRx,
         transmittedBytes: networkTx,
@@ -306,7 +332,7 @@ import {
       } : null
     };
 
-    const hasData = snapshot.cpu || snapshot.load || snapshot.memory || snapshot.network || snapshot.disks;
+    const hasData = snapshot.cpu || snapshot.load || snapshot.memory || snapshot.gpu || snapshot.network || snapshot.disks;
     if (!hasData) throw new Error('Aucune source Future Lab exploitable');
 
     const fingerprintParts = [
@@ -319,6 +345,10 @@ import {
       snapshot.cpu?.total,
       snapshot.load?.one,
       snapshot.memory?.availableKib,
+      snapshot.gpu?.utilizationPercent,
+      snapshot.gpu?.memoryUsedMib,
+      snapshot.gpu?.temperatureCelsius,
+      snapshot.gpu?.powerWatts,
       snapshot.network?.receivedBytes,
       snapshot.network?.transmittedBytes,
       snapshot.disks?.readsCompleted,
@@ -538,6 +568,31 @@ import {
     }
   }
 
+  function renderGpu(sample, snapshot) {
+    const gpu = snapshot?.gpu;
+    elements.gpuName.textContent = gpu?.name || 'Activité GPU';
+    elements.nvtopState.textContent = gpu?.nvtopAvailable ? 'nvtop disponible' : 'nvtop non détecté';
+    if (Number.isFinite(sample?.gpuPercent) && Number.isFinite(sample?.gpuMemoryPercent)) {
+      elements.gpuValue.textContent = DECIMAL.format(sample.gpuPercent);
+      elements.gpuMemoryValue.textContent = DECIMAL.format(sample.gpuMemoryPercent);
+      const temperature = Number.isFinite(sample.gpuTemperatureCelsius)
+        ? `${DECIMAL.format(sample.gpuTemperatureCelsius)} °C`
+        : 'température inconnue';
+      const power = Number.isFinite(sample.gpuPowerWatts)
+        ? `${DECIMAL.format(sample.gpuPowerWatts)} W`
+        : 'puissance inconnue';
+      elements.gpuThermal.textContent = `${temperature} · ${power}`;
+      setQuality(elements.gpuQuality, 'direct', 'Mesure NVIDIA');
+      charts.gpu.canvas.setAttribute('aria-label', `GPU utilisé à ${DECIMAL.format(sample.gpuPercent)} pour cent, VRAM utilisée à ${DECIMAL.format(sample.gpuMemoryPercent)} pour cent, ${temperature}, ${power}.`);
+    } else {
+      elements.gpuValue.textContent = '—';
+      elements.gpuMemoryValue.textContent = '—';
+      elements.gpuThermal.textContent = '— °C · — W';
+      setQuality(elements.gpuQuality, 'unavailable', gpu ? 'Mesures absentes' : 'GPU NVIDIA absent');
+      charts.gpu.canvas.setAttribute('aria-label', 'Activité GPU NVIDIA indisponible.');
+    }
+  }
+
   function renderDisks(sample, snapshot) {
     const disks = snapshot?.disks;
     const scope = disks?.rateScope === 'physical'
@@ -750,6 +805,7 @@ import {
       Number.isFinite(sample.cpuRate) ? `CPU ${DECIMAL.format(sample.cpuRate)} pour cent` : null,
       Number.isFinite(sample.loadOne) ? `charge ${LOAD.format(sample.loadOne)}` : null,
       Number.isFinite(sample.memoryPercent) ? `RAM ${DECIMAL.format(sample.memoryPercent)} pour cent` : null,
+      Number.isFinite(sample.gpuPercent) ? `GPU ${DECIMAL.format(sample.gpuPercent)} pour cent` : null,
       Number.isFinite(sample.networkRxRate) ? `réseau reçu ${formatRate(sample.networkRxRate)}` : null,
       Number.isFinite(sample.diskReadRate) ? `lectures disque ${formatOperations(sample.diskReadRate)}` : null
     ].filter(Boolean);
@@ -770,6 +826,10 @@ import {
         loadPercent: sample.loadPercent,
         memoryPercent: sample.memoryPercent,
         swapPercent: sample.swapPercent,
+        gpuPercent: sample.gpuPercent,
+        gpuMemoryPercent: sample.gpuMemoryPercent,
+        gpuTemperatureCelsius: sample.gpuTemperatureCelsius,
+        gpuPowerWatts: sample.gpuPowerWatts,
         networkRxBytesPerSecond: sample.networkRxRate,
         networkTxBytesPerSecond: sample.networkTxRate,
         diskReadsPerSecond: sample.diskReadRate,
@@ -784,6 +844,7 @@ import {
     renderCpu(sample, snapshot);
     renderLoad(sample, snapshot);
     renderMemory(sample, snapshot);
+    renderGpu(sample, snapshot);
     renderNetwork(sample, snapshot);
     renderDisks(sample, snapshot);
     renderInventories(snapshot);

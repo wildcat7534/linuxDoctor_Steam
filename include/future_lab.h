@@ -10,6 +10,7 @@
 #define FUTURE_LAB_INTERFACE_NAME_CAPACITY 64U
 #define FUTURE_LAB_DISK_LIMIT 64U
 #define FUTURE_LAB_DISK_NAME_CAPACITY 64U
+#define FUTURE_LAB_GPU_NAME_CAPACITY 128U
 
 typedef enum FutureLabState {
     FUTURE_LAB_STATE_UNKNOWN = 0,
@@ -97,12 +98,25 @@ typedef struct FutureLabDiskSnapshot {
     FutureLabDiskDevice devices[FUTURE_LAB_DISK_LIMIT];
 } FutureLabDiskSnapshot;
 
+typedef struct FutureLabGpuSnapshot {
+    FutureLabState state;
+    uint64_t index;
+    char name[FUTURE_LAB_GPU_NAME_CAPACITY];
+    double utilization_percent;
+    double memory_used_mib;
+    double memory_total_mib;
+    double temperature_celsius;
+    double power_watts;
+    bool nvtop_available;
+} FutureLabGpuSnapshot;
+
 typedef struct FutureLabSnapshot {
     FutureLabCpuSnapshot cpu;
     FutureLabLoadSnapshot load;
     FutureLabMemorySnapshot memory;
     FutureLabNetworkSnapshot network;
     FutureLabDiskSnapshot disks;
+    FutureLabGpuSnapshot gpu;
 } FutureLabSnapshot;
 
 const char *future_lab_state_name(FutureLabState state);
@@ -111,6 +125,7 @@ int future_lab_parse_loadavg(FILE *stream, FutureLabLoadSnapshot *snapshot);
 int future_lab_parse_meminfo(FILE *stream, FutureLabMemorySnapshot *snapshot);
 int future_lab_parse_net_dev(FILE *stream, FutureLabNetworkSnapshot *snapshot);
 int future_lab_parse_diskstats(FILE *stream, FutureLabDiskSnapshot *snapshot);
+int future_lab_parse_nvidia_smi(FILE *stream, FutureLabGpuSnapshot *snapshot);
 int future_lab_collect(FutureLabSnapshot *snapshot, char *error, size_t error_size);
 
 #endif

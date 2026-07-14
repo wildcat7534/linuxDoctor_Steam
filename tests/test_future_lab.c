@@ -225,6 +225,26 @@ static void test_disk_limit(void)
     assert(disks.observed_device_count == FUTURE_LAB_DISK_LIMIT + 1U);
 }
 
+static void test_gpu(void)
+{
+    FutureLabGpuSnapshot gpu;
+    FILE *stream = fixture_stream("0, NVIDIA GeForce RTX 3090, 31, 2466, 24576, 44, 100.06\n");
+
+    assert(future_lab_parse_nvidia_smi(stream, &gpu) == 0);
+    assert(fclose(stream) == 0);
+    assert(gpu.state == FUTURE_LAB_STATE_AVAILABLE);
+    assert(gpu.index == 0U);
+    assert(strcmp(gpu.name, "NVIDIA GeForce RTX 3090") == 0);
+    assert(gpu.utilization_percent == 31.0);
+    assert(gpu.memory_total_mib == 24576.0);
+    assert(gpu.power_watts > 100.0 && gpu.power_watts < 100.1);
+
+    stream = fixture_stream("0, GPU, 101, 1, 10, 40, 50\n");
+    assert(future_lab_parse_nvidia_smi(stream, &gpu) == -1);
+    assert(gpu.state == FUTURE_LAB_STATE_UNKNOWN);
+    assert(fclose(stream) == 0);
+}
+
 static void test_live_collection(void)
 {
     FutureLabSnapshot snapshot;
@@ -257,6 +277,7 @@ int main(void)
     test_network_limit();
     test_disks();
     test_disk_limit();
+    test_gpu();
     test_live_collection();
     return 0;
 }

@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#050711">
   <title>Future Lab — Linux Doctor</title>
   <link rel="icon" type="image/png" href="assets/new_logo_2026_9_carre_low.png">
-  <link rel="stylesheet" href="future-lab.css?v=1.1.0">
+  <link rel="stylesheet" href="future-lab.css?v=1.1.1">
 </head>
 <body>
   <a class="skip-link" href="#lab-main">Aller aux mesures</a>
@@ -172,6 +172,22 @@
           <footer><span><i class="legend-dot green"></i>RAM utilisée</span><span><i class="legend-dot pink"></i>swap utilisé</span></footer>
         </article>
 
+        <article id="gpu-panel" class="metric-card metric-wide tone-pink">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">GPU</span>
+            <div><p class="overline">Carte graphique</p><h3 id="gpu-name">Activité GPU</h3></div>
+            <span id="gpu-quality" class="quality is-waiting">Détection</span>
+          </header>
+          <div class="dual-readout">
+            <div><span aria-hidden="true">◆</span><strong id="gpu-value">—</strong><small>% GPU utilisé</small></div>
+            <div><span aria-hidden="true">▣</span><strong id="gpu-memory-value">—</strong><small>% VRAM utilisée</small></div>
+          </div>
+          <div class="chart-frame chart-tall">
+            <canvas id="gpu-chart" class="metric-chart" role="img" aria-label="Activité GPU indisponible"></canvas>
+          </div>
+          <footer><span><i class="legend-dot pink"></i>activité GPU</span><span><i class="legend-dot violet"></i>VRAM</span><span id="gpu-thermal">— °C · — W</span><span id="nvtop-state">nvtop non détecté</span></footer>
+        </article>
+
         <article id="network-panel" class="metric-card metric-wide tone-blue">
           <header>
             <span class="metric-symbol" aria-hidden="true">NET</span>
@@ -221,19 +237,20 @@
         <div class="ai-copy">
           <p class="overline">Copilote local facultatif</p>
           <h2 id="ai-title">Interpréter sans décider à votre place</h2>
-          <p id="ai-model-name">Gemma 3 1B int8 · environ 1,05 Go · exécution locale.</p>
+          <p id="ai-model-name">Gemma 3 270M · fp16 · environ 570 Mo · exécution locale.</p>
           <div class="ai-facts-panel">
             <strong id="ai-facts-title">Lecture factuelle avant l’IA</strong>
             <ul id="ai-facts"><li>En attente d’une mesure exploitable.</li></ul>
           </div>
           <div id="ai-summary" class="ai-summary" role="status" aria-live="polite">Le copilote reformule les constats ci-dessus. Les cartes et leurs valeurs restent toujours la source de vérité.</div>
           <p id="ai-install" class="ai-install" hidden>Module absent. Depuis la racine du projet, lancez <code>./scripts/setup-local-ai.sh</code>, puis cliquez sur « Revérifier ».</p>
-          <label class="ai-consent" for="ai-consent"><input id="ai-consent" type="checkbox" disabled> J'autorise ce modèle hors ligne à lire uniquement les mesures affichées dans cette page. Rien n’est envoyé sur Internet.</label>
+          <p class="ai-local-note">Mode personnel : le modèle lit uniquement l’instantané affiché et reste entièrement sur cette machine.</p>
           <label class="ai-prompt-label" for="ai-prompt">Question au copilote
             <textarea id="ai-prompt" rows="3" maxlength="600" placeholder="Exemple : que retenir de cet instantané ?" disabled></textarea>
           </label>
           <div class="ai-actions">
-            <button id="ai-run" type="button" disabled>Charger et analyser</button>
+            <button id="ai-load" type="button" disabled>Charger le modèle</button>
+            <button id="ai-run" type="button" disabled>Poser la question</button>
             <button id="ai-check" type="button">Revérifier</button>
             <span id="ai-model-state" class="quality is-waiting">Vérification locale</span>
           </div>
@@ -251,7 +268,7 @@
   </div>
 
   <div id="screen-reader-summary" class="sr-only" aria-live="off"></div>
-  <script type="module" src="future-lab.js?v=1.1.0"></script>
-  <script type="module" src="future-lab-ai.js?v=1.1.0"></script>
+  <script type="module" src="future-lab.js?v=1.1.1"></script>
+  <script type="module" src="future-lab-ai.js?v=1.1.1-fp16g"></script>
 </body>
 </html>

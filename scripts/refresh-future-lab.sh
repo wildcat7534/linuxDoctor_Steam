@@ -60,7 +60,7 @@ fi
 
 printf '%s\n' \
     "Linux Doctor : flux Future Lab actif (un instantané par seconde)." \
-    "Arrêt : Ctrl+C. Aucun privilège administrateur n'est utilisé." >&2
+    "Arrêt : Ctrl+C. Root n'est pas requis pour les mesures ; les actions administrateur le demanderont au besoin." >&2
 
 while [ "$stop_requested" -eq 0 ]; do
     temporary=$(mktemp "$output.tmp.XXXXXX")

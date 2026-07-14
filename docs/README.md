@@ -1,6 +1,6 @@
 # Documentation Linux Doctor
 
-La documentation décrit la **1.1.0 livrée** et identifie séparément les fonctions prévues. Un sujet possède un document canonique ; les autres pages y renvoient au lieu de recopier ses règles.
+La documentation décrit l’**édition personnelle 1.1.1** et identifie séparément les fonctions prévues. Un sujet possède un document canonique ; les autres pages y renvoient au lieu de recopier ses règles.
 
 ## Produit
 

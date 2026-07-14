@@ -85,6 +85,17 @@ static FutureLabSnapshot complete_snapshot(void)
                 .writes_completed = 700U,
                 .sectors_written = 800U
             }}
+        },
+        .gpu = {
+            .state = FUTURE_LAB_STATE_AVAILABLE,
+            .index = 0U,
+            .name = "NVIDIA GeForce RTX 3090",
+            .utilization_percent = 31.0,
+            .memory_used_mib = 2466.0,
+            .memory_total_mib = 24576.0,
+            .temperature_celsius = 44.0,
+            .power_watts = 100.06,
+            .nvtop_available = true
         }
     };
 
@@ -120,6 +131,9 @@ static void test_document(void)
     assert(strstr(buffer, "\"received_packets\":120") != NULL);
     assert(strstr(buffer, "\"sectors_written\":800") != NULL);
     assert(strstr(buffer, "\"major\":259,\"minor\":0") != NULL);
+    assert(strstr(buffer, "\"gpu\":{\"state\":\"available\"") != NULL);
+    assert(strstr(buffer, "\"utilization_percent\":31.0") != NULL);
+    assert(strstr(buffer, "\"nvtop_available\":true") != NULL);
     assert(strstr(buffer, "\"member_rule\":\"require_identical_counter_member_sets\"") != NULL);
     assert(strstr(buffer, "\"name\":\"enp\\\"5\\\\s0\"") != NULL);
     assert(strstr(buffer, "\"name\":\"nvme\\\"0\\\\n1\"") != NULL);

@@ -1,6 +1,6 @@
 # Feuille de route
 
-La version 1.1.0 et son Future Lab vivant sont livrés. Chaque cycle suivant doit compléter le parcours **diagnostiquer → expliquer → agir → mesurer** sans élargir silencieusement les données confiées au copilote local.
+L’édition personnelle 1.1.1 et son Future Lab vivant sont livrés. Chaque cycle suivant doit compléter le parcours **diagnostiquer → expliquer → agir → mesurer**.
 
 ## 1.2 — Gaming Readiness et session expliquée
 
@@ -8,11 +8,11 @@ La version 1.1.0 et son Future Lab vivant sont livrés. Chaque cycle suivant doi
 - vérifier Vulkan 64/32 bits, GameMode, MangoHud, Gamescope, DXVK et VKD3D-Proton ;
 - relier manettes, règles `steam-devices` et test Steam Input ;
 - démarrer volontairement une session de mesure liée à un jeu ;
-- ajouter température, fréquence, GPU, VRAM et pression mémoire selon les API disponibles ;
+- ajouter fréquences GPU/VRAM, pression mémoire avancée et fournisseurs non NVIDIA selon les API disponibles ;
 - corréler lancement, compilation de shaders, réseau et stockage sur une timeline ;
 - comparer deux sessions locales, par exemple avant et après une action.
 
-Une extension du contexte IA constitue une fonction distincte : elle devra afficher précisément quelles données supplémentaires sont capturées. Le copilote 1.1.0 reste limité à un seul instantané Future Lab et à ses constats qualitatifs.
+Une extension du contexte IA constitue une fonction distincte : elle devra afficher précisément quelles données supplémentaires sont capturées. Le copilote 1.1.1 reste limité à un seul instantané Future Lab, désormais enrichi des mesures GPU NVIDIA.
 
 ## 1.3 — Connaissance gaming synchronisée
 
@@ -24,7 +24,7 @@ Une extension du contexte IA constitue une fonction distincte : elle devra affic
 
 ## 2.0 — Assistant Gaming Linux
 
-- recherche conversationnelle dans le diagnostic et la documentation avec consentement séparé ;
+- recherche conversationnelle dans le diagnostic et la documentation, directement disponible dans l’édition personnelle ;
 - profils d’optimisation expliqués pour écran, pilote et type de jeu ;
 - catalogue d’actions testées, simulables et vérifiables ;
 - modules versionnés pour les nouveaux fournisseurs GPU, plateformes et périphériques ;

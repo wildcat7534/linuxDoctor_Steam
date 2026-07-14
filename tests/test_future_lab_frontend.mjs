@@ -32,6 +32,13 @@ function snapshot(time = 1000) {
       swapTotalKib: 4000,
       swapFreeKib: 3000
     },
+    gpu: {
+      utilizationPercent: 31,
+      memoryUsedMib: 6144,
+      memoryTotalMib: 24576,
+      temperatureCelsius: 44,
+      powerWatts: 100
+    },
     network: {
       truncated: false,
       interfaces: [{
@@ -68,6 +75,8 @@ test('calcule seulement les deltas de membres identiques', () => {
   assert.equal(sample.networkTxRate, 512);
   assert.equal(sample.diskReadRate, 2);
   assert.equal(sample.diskWriteRate, 4);
+  assert.equal(sample.gpuPercent, 31);
+  assert.equal(sample.gpuMemoryPercent, 25);
 });
 
 test('rejette un changement de boot ou de topologie', () => {
@@ -123,11 +132,11 @@ test('borne les réponses du modèle aux faits qualitatifs', () => {
   const messages = buildModelMessages(telemetry, 'Que retenir ?');
   assert.doesNotMatch(messages[1].content, /20|33/);
   assert.match(validateModelAnswer('Le CPU et la RAM restent dans une zone confortable.', facts), /CPU/);
-  assert.throws(() => validateModelAnswer('Le CPU est à 42 %.', facts), /valeurs/);
+  assert.match(validateModelAnswer('Le CPU reste calme avec environ 42 %.', facts), /42/);
   assert.throws(() => validateModelAnswer('Pour le CPU, lance sudo apt update.', facts), /commande/);
   assert.throws(() => validateModelAnswer(
     'Le CPU est saturé à cause de Proton et la mémoire provoque des saccades.', facts
-  ), /cause|diagnostic/);
+  ), /contredit/);
   assert.throws(() => validateModelAnswer(
     'Le réseau souffre sûrement d’une panne et le disque est défectueux.', facts
   ), /cause|diagnostic|absente/);

@@ -413,6 +413,7 @@ main { display: grid; gap: 1rem; margin-top: 1rem; }
 .tone-green { --tone: var(--green); }
 .tone-blue { --tone: var(--blue); }
 .tone-orange { --tone: var(--orange); }
+.tone-pink { --tone: var(--pink); }
 .metric-wide { grid-column: 1 / -1; }
 
 .metric-card > header {
@@ -594,8 +595,7 @@ main { display: grid; gap: 1rem; margin-top: 1rem; }
 .ai-summary { min-height: 4.2rem; margin: 1rem 0; padding: .85rem 1rem; border-left: 3px solid var(--violet); color: #e9e5ff; background: rgba(146, 124, 255, .08); line-height: 1.6; white-space: pre-wrap; }
 .ai-install { padding: .7rem .85rem; border: 1px solid rgba(255, 180, 94, .34); border-radius: 11px; background: rgba(255, 180, 94, .07); font-size: .82rem; }
 .ai-install code { color: #ffe5bd; overflow-wrap: anywhere; }
-.ai-consent { display: flex; align-items: start; gap: .55rem; color: var(--muted); font-size: .82rem; line-height: 1.5; }
-.ai-consent input { margin-top: .2rem; accent-color: var(--violet); }
+.ai-local-note { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.5; }
 .ai-prompt-label { display: grid; gap: .45rem; margin-top: 1rem; color: var(--muted); font-size: .75rem; font-weight: 800; }
 .ai-prompt-label textarea { resize: vertical; width: 100%; padding: .75rem; border: 1px solid rgba(146, 124, 255, .38); border-radius: 12px; color: var(--text); background: rgba(5, 8, 20, .85); }
 .ai-prompt-label textarea:disabled { opacity: .58; }

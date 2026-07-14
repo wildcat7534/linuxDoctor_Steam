@@ -14,7 +14,7 @@ La lecture suit un chemin court :
 
 Une valeur inconnue apparaît comme telle. Chaque couleur est accompagnée d’une icône et d’un texte ; chaque score indique ce qui l’a fait monter ou baisser.
 
-## Fenêtre Future Lab 1.1.0
+## Fenêtre Future Lab 1.1.1
 
 `future-lab.html` s’ouvre depuis une carte d’appel visible dans le tableau de bord. Son identité visuelle cyan/violet évoque un cockpit gaming tout en conservant contraste, hiérarchie et sobriété des mouvements.
 
@@ -34,11 +34,11 @@ La carte Réseau porte le libellé **Toutes les interfaces**. Elle avertit qu’
 
 ## Assistant local
 
-La zone IA distingue trois états : **modèle absent**, **chargement** et **prêt localement**. Elle indique le modèle actif, son exécution WebGPU ou WASM et le fait que la réponse est une reformulation. Le consentement puis le clic sur l’analyse précèdent tout chargement en mémoire ; un Web Worker garde le cockpit utilisable pendant l’inférence.
+La zone IA distingue trois états : **modèle absent**, **chargement** et **prêt localement**. **Charger le modèle** prépare explicitement le moteur sans case de consentement, puis **Poser la question** devient disponible. Un Web Worker garde le cockpit utilisable pendant l’inférence.
 
 Le clic fige l’instantané courant. La liste **Faits utilisés pour cette analyse** montre les constats déterministes associés ; le modèle reçoit leurs versions qualitatives sans chiffres et la question de l’utilisateur. La timeline, le rapport de diagnostic, les preuves et la base gaming ne lui sont pas transmis.
 
-Une réponse contenant un chiffre, une commande ou un texte extérieur aux mesures est écartée. L’interface réaffiche alors la lecture factuelle ; l’assistant ne propose et ne lance aucune commande.
+Le mode personnel accepte une réponse plus libre, y compris des nombres. Une commande ou une contradiction directe avec les mesures reste écartée ; l’assistant ne lance aucune commande.
 
 Le bouton de préparation renvoie vers `scripts/setup-local-ai.sh`. Le modèle ne se télécharge ni ne se charge silencieusement : l’utilisateur voit la taille approximative et choisit d’activer cette capacité.
 

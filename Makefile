@@ -55,6 +55,7 @@ test-frontend:
 	node --check frontend/future-lab-core.js
 	node --check frontend/future-lab.js
 	node --check frontend/future-lab-ai.js
+	node --check frontend/future-lab-ai-worker.js
 	node --test tests/test_future_lab_frontend.mjs
 
 run: $(TARGET)

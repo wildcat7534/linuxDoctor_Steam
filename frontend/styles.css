@@ -96,9 +96,12 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 }
 
 .primary {
+  display: inline-block;
   padding: .8rem 1rem;
   background: linear-gradient(180deg, #244b30, #1a3322);
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
 }
 
 .analysis-progress {

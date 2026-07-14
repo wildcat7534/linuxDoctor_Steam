@@ -79,6 +79,8 @@ typedef struct FutureLabNetworkSnapshot {
 
 typedef struct FutureLabDiskDevice {
     char name[FUTURE_LAB_DISK_NAME_CAPACITY];
+    uint64_t major;
+    uint64_t minor;
     /* Cumulative kernel counters. Sector size must not be inferred here. */
     uint64_t reads_completed;
     uint64_t sectors_read;

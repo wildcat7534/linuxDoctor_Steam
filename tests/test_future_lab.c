@@ -179,6 +179,8 @@ static void test_disks(void)
     assert(disks.skipped_pseudo_device_count == 1U);
     assert(!disks.truncated);
     assert(strcmp(disks.devices[0].name, "sda") == 0);
+    assert(disks.devices[0].major == 8U);
+    assert(disks.devices[0].minor == 0U);
     assert(disks.devices[0].reads_completed == 100U);
     assert(disks.devices[0].sectors_read == 2000U);
     assert(disks.devices[0].writes_completed == 50U);

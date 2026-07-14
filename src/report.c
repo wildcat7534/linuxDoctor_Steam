@@ -1,5 +1,6 @@
 #include "report.h"
 
+#include "future_lab_json.h"
 #include "json.h"
 
 #include <inttypes.h>
@@ -619,133 +620,10 @@ static int write_graphics_inventory(FILE *stream, const GraphicsInfo *graphics)
     return fputs("]}", stream) == EOF ? -1 : 0;
 }
 
-static int write_future_lab_cpu(FILE *stream, const FutureLabCpuSnapshot *cpu)
-{
-    if (fputs("\"cpu\":{\"state\":", stream) == EOF ||
-        json_write_string(stream, future_lab_state_name(cpu->state)) != 0 ||
-        fputs(",\"source\":\"/proc/stat\"", stream) == EOF) return -1;
-    if (cpu->state == FUTURE_LAB_STATE_AVAILABLE &&
-        (fprintf(stream, ",\"logical_cpu_count\":%zu,\"counters\":{"
-            "\"cumulative\":true,\"scope\":\"since_boot\",\"unit\":\"scheduler_ticks\","
-            "\"user\":%" PRIu64 ",\"nice\":%" PRIu64 ",\"system\":%" PRIu64
-            ",\"idle\":%" PRIu64 ",\"iowait\":%" PRIu64 ",\"irq\":%" PRIu64
-            ",\"softirq\":%" PRIu64 ",\"steal\":%" PRIu64 ",\"busy\":%" PRIu64
-            ",\"total\":%" PRIu64 "}",
-            cpu->logical_cpu_count, cpu->user_ticks, cpu->nice_ticks, cpu->system_ticks,
-            cpu->idle_ticks, cpu->iowait_ticks, cpu->irq_ticks, cpu->softirq_ticks,
-            cpu->steal_ticks, cpu->busy_ticks, cpu->total_ticks) < 0)) return -1;
-    return fputc('}', stream) == EOF ? -1 : 0;
-}
-
-static int write_future_lab_load(FILE *stream, const FutureLabLoadSnapshot *load)
-{
-    if (fputs("\"load\":{\"state\":", stream) == EOF ||
-        json_write_string(stream, future_lab_state_name(load->state)) != 0 ||
-        fputs(",\"source\":\"/proc/loadavg\"", stream) == EOF) return -1;
-    if (load->state == FUTURE_LAB_STATE_AVAILABLE &&
-        fprintf(stream, ",\"kind\":\"kernel_run_queue_average\","
-            "\"one_minute\":%.2f,\"five_minutes\":%.2f,\"fifteen_minutes\":%.2f,"
-            "\"running_tasks\":%" PRIu64 ",\"total_tasks\":%" PRIu64,
-            load->one_minute, load->five_minutes, load->fifteen_minutes,
-            load->running_tasks, load->total_tasks) < 0) return -1;
-    return fputc('}', stream) == EOF ? -1 : 0;
-}
-
-static int write_future_lab_memory(FILE *stream, const FutureLabMemorySnapshot *memory)
-{
-    if (fputs("\"memory\":{\"state\":", stream) == EOF ||
-        json_write_string(stream, future_lab_state_name(memory->state)) != 0 ||
-        fputs(",\"source\":\"/proc/meminfo\"", stream) == EOF) return -1;
-    if (memory->state == FUTURE_LAB_STATE_AVAILABLE &&
-        fprintf(stream, ",\"unit\":\"KiB\",\"total\":%" PRIu64
-            ",\"available\":%" PRIu64 ",\"used\":%" PRIu64
-            ",\"buffers\":%" PRIu64 ",\"cached\":%" PRIu64
-            ",\"swap_total\":%" PRIu64 ",\"swap_free\":%" PRIu64,
-            memory->total_kib, memory->available_kib, memory->used_kib,
-            memory->buffers_kib, memory->cached_kib, memory->swap_total_kib,
-            memory->swap_free_kib) < 0) return -1;
-    return fputc('}', stream) == EOF ? -1 : 0;
-}
-
-static int write_future_lab_network(FILE *stream, const FutureLabNetworkSnapshot *network)
-{
-    size_t index;
-
-    if (fputs("\"network\":{\"state\":", stream) == EOF ||
-        json_write_string(stream, future_lab_state_name(network->state)) != 0 ||
-        fputs(",\"source\":\"/proc/net/dev\"", stream) == EOF) return -1;
-    if (network->state != FUTURE_LAB_STATE_AVAILABLE) return fputc('}', stream) == EOF ? -1 : 0;
-    if (fputs(",\"truncated\":", stream) == EOF ||
-        fputs(network->truncated ? "true" : "false", stream) == EOF ||
-        fprintf(stream, ",\"observed_interface_count\":%zu,\"reported_interface_count\":%zu,"
-            "\"counters\":{\"cumulative\":true,\"rates_calculated\":false,"
-            "\"received_bytes\":%" PRIu64 ",\"transmitted_bytes\":%" PRIu64 "},"
-            "\"interfaces\":[", network->observed_interface_count, network->interface_count,
-            network->received_bytes, network->transmitted_bytes) < 0) return -1;
-    for (index = 0U; index < network->interface_count; index++) {
-        const FutureLabNetworkInterface *interface = &network->interfaces[index];
-
-        if (index > 0U && fputc(',', stream) == EOF) return -1;
-        if (fputs("{\"name\":", stream) == EOF || json_write_string(stream, interface->name) != 0 ||
-            fprintf(stream, ",\"counters\":{\"cumulative\":true,\"received_bytes\":%" PRIu64
-                ",\"received_packets\":%" PRIu64 ",\"received_errors\":%" PRIu64
-                ",\"received_dropped\":%" PRIu64 ",\"transmitted_bytes\":%" PRIu64
-                ",\"transmitted_packets\":%" PRIu64 ",\"transmitted_errors\":%" PRIu64
-                ",\"transmitted_dropped\":%" PRIu64 "}}",
-                interface->received_bytes, interface->received_packets,
-                interface->received_errors, interface->received_dropped,
-                interface->transmitted_bytes, interface->transmitted_packets,
-                interface->transmitted_errors, interface->transmitted_dropped) < 0) return -1;
-    }
-    return fputs("]}", stream) == EOF ? -1 : 0;
-}
-
-static int write_future_lab_disks(FILE *stream, const FutureLabDiskSnapshot *disks)
-{
-    size_t index;
-
-    if (fputs("\"disks\":{\"state\":", stream) == EOF ||
-        json_write_string(stream, future_lab_state_name(disks->state)) != 0 ||
-        fputs(",\"source\":\"/proc/diskstats\"", stream) == EOF) return -1;
-    if (disks->state != FUTURE_LAB_STATE_AVAILABLE) return fputc('}', stream) == EOF ? -1 : 0;
-    if (fputs(",\"truncated\":", stream) == EOF ||
-        fputs(disks->truncated ? "true" : "false", stream) == EOF ||
-        fprintf(stream, ",\"observed_device_count\":%zu,\"reported_device_count\":%zu,"
-            "\"skipped_pseudo_device_count\":%zu,\"counters_are_cumulative\":true,"
-            "\"rates_calculated\":false,\"sector_size_not_interpreted\":true,\"devices\":[",
-            disks->observed_device_count, disks->device_count,
-            disks->skipped_pseudo_device_count) < 0) return -1;
-    for (index = 0U; index < disks->device_count; index++) {
-        const FutureLabDiskDevice *device = &disks->devices[index];
-
-        if (index > 0U && fputc(',', stream) == EOF) return -1;
-        if (fputs("{\"name\":", stream) == EOF || json_write_string(stream, device->name) != 0 ||
-            fprintf(stream, ",\"counters\":{\"cumulative\":true,\"reads_completed\":%" PRIu64
-                ",\"sectors_read\":%" PRIu64 ",\"writes_completed\":%" PRIu64
-                ",\"sectors_written\":%" PRIu64 "}}",
-                device->reads_completed, device->sectors_read, device->writes_completed,
-                device->sectors_written) < 0) return -1;
-    }
-    return fputs("]}", stream) == EOF ? -1 : 0;
-}
-
 static int write_future_lab(FILE *stream, const FutureLabSnapshot *snapshot)
 {
-    const bool complete = snapshot->cpu.state == FUTURE_LAB_STATE_AVAILABLE &&
-        snapshot->load.state == FUTURE_LAB_STATE_AVAILABLE &&
-        snapshot->memory.state == FUTURE_LAB_STATE_AVAILABLE &&
-        snapshot->network.state == FUTURE_LAB_STATE_AVAILABLE &&
-        snapshot->disks.state == FUTURE_LAB_STATE_AVAILABLE;
-
-    if (fputs("\"future_lab\":{\"read_only\":true,\"snapshot_kind\":\"single_local_snapshot\","
-        "\"rates_calculated\":false,\"complete\":", stream) == EOF ||
-        fputs(complete ? "true," : "false,", stream) == EOF ||
-        write_future_lab_cpu(stream, &snapshot->cpu) != 0 || fputc(',', stream) == EOF ||
-        write_future_lab_load(stream, &snapshot->load) != 0 || fputc(',', stream) == EOF ||
-        write_future_lab_memory(stream, &snapshot->memory) != 0 || fputc(',', stream) == EOF ||
-        write_future_lab_network(stream, &snapshot->network) != 0 || fputc(',', stream) == EOF ||
-        write_future_lab_disks(stream, &snapshot->disks) != 0 || fputc('}', stream) == EOF) return -1;
-    return 0;
+    return fputs("\"future_lab\":", stream) == EOF ||
+        future_lab_json_write_snapshot(stream, snapshot) != 0 ? -1 : 0;
 }
 
 static bool future_lab_has_available_source(const FutureLabSnapshot *snapshot)

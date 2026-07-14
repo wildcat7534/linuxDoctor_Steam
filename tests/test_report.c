@@ -138,6 +138,7 @@ int main(void)
         .disks = {.state = FUTURE_LAB_STATE_AVAILABLE,
             .observed_device_count = 1U, .skipped_pseudo_device_count = 2U,
             .device_count = 1U, .devices = {{.name = "nvme0n1",
+                .major = 259U, .minor = 0U,
                 .reads_completed = 100U, .sectors_read = 200U,
                 .writes_completed = 300U, .sectors_written = 400U}}}
     };
@@ -232,7 +233,8 @@ int main(void)
     assert(strstr(buffer, "\"network\":{\"state\":\"available\"") != NULL);
     assert(strstr(buffer, "\"name\":\"eth0\",\"counters\":{\"cumulative\":true") != NULL);
     assert(strstr(buffer, "\"sector_size_not_interpreted\":true") != NULL);
-    assert(strstr(buffer, "\"name\":\"nvme0n1\",\"counters\":{\"cumulative\":true") != NULL);
+    assert(strstr(buffer, "\"name\":\"nvme0n1\",\"major\":259,\"minor\":0,"
+        "\"counters\":{\"cumulative\":true") != NULL);
     assert(strstr(buffer, "bytes_per_second") == NULL);
     assert(strstr(buffer, "\"id\":\"future_lab\",\"name\":\"Future Lab\",\"icon\":\"🧪\","
         "\"status\":\"info\",\"score\":null") != NULL);

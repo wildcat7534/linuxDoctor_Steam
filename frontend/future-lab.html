@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta name="theme-color" content="#050711">
+  <title>Future Lab — Linux Doctor</title>
+  <link rel="icon" type="image/png" href="assets/new_logo_2026_9_carre_low.png">
+  <link rel="stylesheet" href="future-lab.css?v=1.1.0">
+</head>
+<body>
+  <a class="skip-link" href="#lab-main">Aller aux mesures</a>
+
+  <div class="lab-shell">
+    <header class="cockpit-header">
+      <nav class="lab-nav" aria-label="Navigation Future Lab">
+        <a class="back-link" href="index.html"><span aria-hidden="true">←</span> Tableau de bord</a>
+        <div class="lab-brand">
+          <img src="assets/new_logo_2026_9_carre_low.png" alt="Logo Linux Doctor, félin végétal et cyberpunk">
+          <span><strong>Linux Doctor</strong><small>Ubuntu Gaming Intelligence</small></span>
+        </div>
+        <div id="stream-state" class="stream-state is-starting" role="status" aria-live="polite">
+          <span class="stream-dot" aria-hidden="true"></span>
+          <span id="stream-state-label">Initialisation</span>
+        </div>
+      </nav>
+
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="overline">Module expérimental · télémétrie locale</p>
+          <h1>FUTURE <span>LAB</span></h1>
+          <p class="hero-lead">Le cockpit vivant de votre machine de jeu Linux.</p>
+          <p class="hero-detail">Les courbes sont calculées dans cette fenêtre à partir d'instantanés locaux successifs. Sans deux mesures comparables, aucun débit n'est inventé.</p>
+          <div class="hero-badges" aria-label="Caractéristiques du Future Lab">
+            <span>Ubuntu 26.04</span>
+            <span>Wayland ready</span>
+            <span>Traitement local</span>
+          </div>
+        </div>
+
+        <div class="reactor" aria-hidden="true">
+          <svg viewBox="0 0 320 320" focusable="false">
+            <defs>
+              <linearGradient id="reactor-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#54f7ff"/>
+                <stop offset=".52" stop-color="#8d7dff"/>
+                <stop offset="1" stop-color="#ff5de4"/>
+              </linearGradient>
+              <filter id="reactor-glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <circle class="reactor-track outer" cx="160" cy="160" r="124"/>
+            <circle class="reactor-track middle" cx="160" cy="160" r="94"/>
+            <circle class="reactor-track inner" cx="160" cy="160" r="64"/>
+            <path class="reactor-arc arc-a" d="M 54 160 A 106 106 0 0 1 160 54"/>
+            <path class="reactor-arc arc-b" d="M 266 160 A 106 106 0 0 1 160 266"/>
+            <g class="reactor-core" filter="url(#reactor-glow)">
+              <path d="M160 102 208 130 208 190 160 218 112 190 112 130Z"/>
+              <path class="core-mark" d="m143 137 34 0 18 23-18 23h-34l-18-23Z"/>
+            </g>
+            <g class="orbit-points">
+              <circle cx="160" cy="36" r="5"/>
+              <circle cx="254" cy="226" r="4"/>
+              <circle cx="68" cy="88" r="3"/>
+            </g>
+          </svg>
+          <span>LOCAL CORE</span>
+        </div>
+      </div>
+    </header>
+
+    <main id="lab-main">
+      <section id="source-banner" class="source-banner is-starting" aria-labelledby="source-title">
+        <div class="source-icon" aria-hidden="true">⌁</div>
+        <div>
+          <p class="overline">Canal de mesure</p>
+          <h2 id="source-title">Connexion au collecteur local…</h2>
+          <p id="source-description">Future Lab cherche un flux actualisé, puis utilisera le dernier rapport disponible si nécessaire.</p>
+        </div>
+        <dl class="source-facts">
+          <div><dt>Source</dt><dd id="source-value">En attente</dd></div>
+          <div><dt>Fraîcheur</dt><dd id="freshness-value">—</dd></div>
+          <div><dt>Fenêtre</dt><dd id="window-value">60 points max.</dd></div>
+        </dl>
+      </section>
+
+      <section class="command-deck" aria-label="Commandes de la timeline">
+        <div>
+          <p class="overline">Timeline bornée</p>
+          <strong id="sample-count">0 mesure</strong>
+          <small>Conservée uniquement dans la mémoire de cette page.</small>
+        </div>
+        <label for="history-limit">Profondeur
+          <select id="history-limit">
+            <option value="30">30 secondes</option>
+            <option value="60" selected>60 secondes</option>
+            <option value="120">120 secondes</option>
+          </select>
+        </label>
+        <button id="pause-stream" type="button" aria-pressed="false">
+          <span aria-hidden="true">Ⅱ</span> Suspendre
+        </button>
+        <button id="clear-timeline" type="button">
+          <span aria-hidden="true">↺</span> Effacer la timeline
+        </button>
+      </section>
+
+      <section class="metric-grid" aria-labelledby="telemetry-title">
+        <div class="section-heading metric-grid-heading">
+          <div>
+            <p class="overline">Signaux de la machine</p>
+            <h2 id="telemetry-title">Télémétrie gaming</h2>
+          </div>
+          <p id="telemetry-summary" class="telemetry-summary" aria-live="polite">Une seconde mesure est nécessaire pour calculer les taux.</p>
+        </div>
+
+        <article id="cpu-panel" class="metric-card tone-cyan">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">CPU</span>
+            <div><p class="overline">Processeur</p><h3>Activité CPU</h3></div>
+            <span id="cpu-quality" class="quality is-waiting">Synchronisation</span>
+          </header>
+          <div class="metric-readout">
+            <strong id="cpu-value">—</strong><span>% occupé</span>
+            <small id="cpu-detail">Deux compteurs CPU sont nécessaires.</small>
+          </div>
+          <div class="chart-frame">
+            <canvas id="cpu-chart" class="metric-chart" role="img" aria-label="Activité CPU indisponible pour le moment"></canvas>
+          </div>
+          <footer><span><i class="legend-dot cyan"></i>activité entre deux instantanés</span><span id="cpu-count">— CPU logiques</span></footer>
+        </article>
+
+        <article id="load-panel" class="metric-card tone-violet">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">LOAD</span>
+            <div><p class="overline">File de travail</p><h3>Charge système</h3></div>
+            <span id="load-quality" class="quality is-waiting">En attente</span>
+          </header>
+          <div class="metric-readout">
+            <strong id="load-value">—</strong><span>moyenne à 1 min</span>
+            <small id="load-detail">Rapportée au nombre de CPU, sans la confondre avec l'activité CPU.</small>
+          </div>
+          <div class="chart-frame">
+            <canvas id="load-chart" class="metric-chart" role="img" aria-label="Charge système indisponible"></canvas>
+          </div>
+          <footer><span><i class="legend-dot violet"></i>charge 1 min / CPU logiques</span><span id="task-count">— tâches</span></footer>
+        </article>
+
+        <article id="memory-panel" class="metric-card metric-wide tone-green">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">RAM</span>
+            <div><p class="overline">Mémoire</p><h3>RAM &amp; swap</h3></div>
+            <span id="memory-quality" class="quality is-waiting">En attente</span>
+          </header>
+          <div class="memory-layout">
+            <div class="memory-reactor" aria-hidden="true">
+              <div class="memory-fill" id="memory-fill"></div>
+              <span>RAM</span>
+            </div>
+            <div class="memory-values">
+              <div><strong id="memory-value">—</strong><span>% RAM utilisée</span><small id="memory-detail">Valeur indisponible</small></div>
+              <div><strong id="swap-value">—</strong><span>% swap utilisé</span><small id="swap-detail">Valeur indisponible</small></div>
+            </div>
+            <div class="chart-frame">
+              <canvas id="memory-chart" class="metric-chart" role="img" aria-label="Utilisation mémoire indisponible"></canvas>
+            </div>
+          </div>
+          <footer><span><i class="legend-dot green"></i>RAM utilisée</span><span><i class="legend-dot pink"></i>swap utilisé</span></footer>
+        </article>
+
+        <article id="network-panel" class="metric-card metric-wide tone-blue">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">NET</span>
+            <div><p class="overline">Toutes les interfaces</p><h3>Cumul réception &amp; émission</h3></div>
+            <span id="network-quality" class="quality is-waiting">Synchronisation</span>
+          </header>
+          <div class="dual-readout">
+            <div><span aria-hidden="true">↓</span><strong id="network-rx">—</strong><small>réception / s</small></div>
+            <div><span aria-hidden="true">↑</span><strong id="network-tx">—</strong><small>émission / s</small></div>
+          </div>
+          <div class="chart-frame chart-tall">
+            <canvas id="network-chart" class="metric-chart" role="img" aria-label="Débits réseau indisponibles"></canvas>
+          </div>
+          <footer><span><i class="legend-dot blue"></i>RX</span><span><i class="legend-dot pink"></i>TX</span><span id="interface-count">— interfaces</span><span>Des couches virtuelles peuvent compter le même trafic.</span></footer>
+        </article>
+
+        <article id="disk-panel" class="metric-card metric-wide tone-orange">
+          <header>
+            <span class="metric-symbol" aria-hidden="true">I/O</span>
+            <div><p class="overline">Stockage</p><h3>Lectures &amp; écritures disque</h3></div>
+            <span id="disk-quality" class="quality is-waiting">Synchronisation</span>
+          </header>
+          <div class="dual-readout">
+            <div><span aria-hidden="true">R</span><strong id="disk-read">—</strong><small>lectures terminées / s</small></div>
+            <div><span aria-hidden="true">W</span><strong id="disk-write">—</strong><small>écritures terminées / s</small></div>
+          </div>
+          <div class="chart-frame chart-tall">
+            <canvas id="disk-chart" class="metric-chart" role="img" aria-label="Activité disque indisponible"></canvas>
+          </div>
+          <footer><span><i class="legend-dot orange"></i>lectures</span><span><i class="legend-dot pink"></i>écritures</span><span id="disk-count">— disques physiques</span></footer>
+        </article>
+      </section>
+
+      <section class="inventory-grid" aria-label="Inventaires techniques">
+        <details id="interfaces-details" class="data-drawer">
+          <summary><span aria-hidden="true">⌁</span><span><strong>Interfaces réseau</strong><small id="interfaces-summary">Détails cumulés</small></span></summary>
+          <div id="interfaces-list" class="data-list"><p class="empty-state">Aucune donnée réseau reçue.</p></div>
+        </details>
+        <details id="disks-details" class="data-drawer">
+          <summary><span aria-hidden="true">◉</span><span><strong>Périphériques de stockage</strong><small id="disks-summary">Détails cumulés</small></span></summary>
+          <div id="disks-list" class="data-list"><p class="empty-state">Aucune donnée disque reçue.</p></div>
+        </details>
+      </section>
+
+      <section id="future-lab-ai" class="ai-console" data-ai-state="unavailable" aria-labelledby="ai-title">
+        <div class="ai-orb" aria-hidden="true"><i></i><i></i><i></i><span>AI</span></div>
+        <div class="ai-copy">
+          <p class="overline">Copilote local facultatif</p>
+          <h2 id="ai-title">Interpréter sans décider à votre place</h2>
+          <p id="ai-model-name">Gemma 3 1B int8 · environ 1,05 Go · exécution locale.</p>
+          <div class="ai-facts-panel">
+            <strong id="ai-facts-title">Lecture factuelle avant l’IA</strong>
+            <ul id="ai-facts"><li>En attente d’une mesure exploitable.</li></ul>
+          </div>
+          <div id="ai-summary" class="ai-summary" role="status" aria-live="polite">Le copilote reformule les constats ci-dessus. Les cartes et leurs valeurs restent toujours la source de vérité.</div>
+          <p id="ai-install" class="ai-install" hidden>Module absent. Depuis la racine du projet, lancez <code>./scripts/setup-local-ai.sh</code>, puis cliquez sur « Revérifier ».</p>
+          <label class="ai-consent" for="ai-consent"><input id="ai-consent" type="checkbox" disabled> J'autorise ce modèle hors ligne à lire uniquement les mesures affichées dans cette page. Rien n’est envoyé sur Internet.</label>
+          <label class="ai-prompt-label" for="ai-prompt">Question au copilote
+            <textarea id="ai-prompt" rows="3" maxlength="600" placeholder="Exemple : que retenir de cet instantané ?" disabled></textarea>
+          </label>
+          <div class="ai-actions">
+            <button id="ai-run" type="button" disabled>Charger et analyser</button>
+            <button id="ai-check" type="button">Revérifier</button>
+            <span id="ai-model-state" class="quality is-waiting">Vérification locale</span>
+          </div>
+          <progress id="ai-progress" max="100" value="0" hidden>Chargement du modèle</progress>
+          <p id="ai-status" class="sr-only" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="lab-footer">
+      <span>Linux Doctor · Future Lab</span>
+      <span>Les taux exigent deux instantanés locaux comparables.</span>
+      <a href="index.html">Retour au diagnostic guidé</a>
+    </footer>
+  </div>
+
+  <div id="screen-reader-summary" class="sr-only" aria-live="off"></div>
+  <script type="module" src="future-lab.js?v=1.1.0"></script>
+  <script type="module" src="future-lab-ai.js?v=1.1.0"></script>
+</body>
+</html>

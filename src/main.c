@@ -10,6 +10,7 @@
 #include "graphics.h"
 #include "knowledge.h"
 #include "future_lab.h"
+#include "future_lab_json.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -18,16 +19,62 @@
 static void print_usage(const char *program)
 {
     (void)fprintf(stderr, "Usage: %s [--history] [--output FILE] [--version]\n"
+        "       %s --future-lab-json\n"
         "       %s --check-knowledge FILE\n"
-        "       %s --install-knowledge FILE\n", program, program, program);
+        "       %s --install-knowledge FILE\n", program, program, program, program);
 }
 
-int main(int argc, char **argv)
+static int write_future_lab_stdout(void)
 {
-    const char *output_path = "report.json";
-    const char *check_knowledge_path = NULL;
-    const char *install_knowledge_path = NULL;
-    bool history_enabled = false;
+    FutureLabSnapshot snapshot;
+    FutureLabSampleMetadata metadata;
+    char error[256];
+
+    if (future_lab_collect(&snapshot, error, sizeof(error)) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: unable to collect Future Lab metrics: %s\n", error);
+        return 1;
+    }
+    if (future_lab_sample_metadata_now(&metadata) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: unable to timestamp Future Lab metrics.\n");
+        return 1;
+    }
+    if (future_lab_json_write_document(stdout, &snapshot, &metadata) != 0 || fflush(stdout) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: unable to write Future Lab JSON.\n");
+        return 1;
+    }
+    return 0;
+}
+
+static int check_knowledge_database(const char *path)
+{
+    GamingKnowledgeBase knowledge;
+    char error[256];
+
+    if (gaming_knowledge_validate_file(path, &knowledge, error, sizeof(error)) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: invalid knowledge database: %s\n", error);
+        return 1;
+    }
+    (void)printf("Linux Doctor: knowledge database %s reviewed %s (%zu entries) is valid.\n",
+        knowledge.version, knowledge.reviewed_on, knowledge.entry_count);
+    return 0;
+}
+
+static int install_knowledge_database(const char *path)
+{
+    char installed_path[GAMING_KNOWLEDGE_PATH_CAPACITY];
+    char error[256];
+
+    if (gaming_knowledge_install(path, installed_path,
+        sizeof(installed_path), error, sizeof(error)) != 0) {
+        (void)fprintf(stderr, "Linux Doctor: cannot install knowledge database: %s\n", error);
+        return 1;
+    }
+    (void)printf("Linux Doctor: knowledge database installed in %s\n", installed_path);
+    return 0;
+}
+
+static int write_full_report(const char *output_path, bool history_enabled)
+{
     StorageInfo storage;
     UpdatesInfo updates;
     AppsInfo apps;
@@ -42,47 +89,6 @@ int main(int argc, char **argv)
     char error[256];
     FILE *output;
 
-    for (int index = 1; index < argc; index++) {
-        if (strcmp(argv[index], "--history") == 0) {
-            history_enabled = true;
-        } else if (strcmp(argv[index], "--output") == 0 && index + 1 < argc) {
-            output_path = argv[++index];
-        } else if (strcmp(argv[index], "--version") == 0) {
-            (void)printf("Linux Doctor Gamer Edition %s\n", LINUX_DOCTOR_VERSION);
-            return 0;
-        } else if (strcmp(argv[index], "--check-knowledge") == 0 && index + 1 < argc) {
-            check_knowledge_path = argv[++index];
-        } else if (strcmp(argv[index], "--install-knowledge") == 0 && index + 1 < argc) {
-            install_knowledge_path = argv[++index];
-        } else {
-            print_usage(argv[0]);
-            return 2;
-        }
-    }
-    if (check_knowledge_path != NULL && install_knowledge_path != NULL) {
-        print_usage(argv[0]);
-        return 2;
-    }
-    if (check_knowledge_path != NULL) {
-        if (gaming_knowledge_validate_file(check_knowledge_path, &knowledge, error, sizeof(error)) != 0) {
-            (void)fprintf(stderr, "Linux Doctor: invalid knowledge database: %s\n", error);
-            return 1;
-        }
-        (void)printf("Linux Doctor: knowledge database %s reviewed %s (%zu entries) is valid.\n",
-            knowledge.version, knowledge.reviewed_on, knowledge.entry_count);
-        return 0;
-    }
-    if (install_knowledge_path != NULL) {
-        char installed_path[GAMING_KNOWLEDGE_PATH_CAPACITY];
-
-        if (gaming_knowledge_install(install_knowledge_path, installed_path,
-            sizeof(installed_path), error, sizeof(error)) != 0) {
-            (void)fprintf(stderr, "Linux Doctor: cannot install knowledge database: %s\n", error);
-            return 1;
-        }
-        (void)printf("Linux Doctor: knowledge database installed in %s\n", installed_path);
-        return 0;
-    }
     if (storage_collect_root(&storage, error, sizeof(error)) != 0) {
         (void)fprintf(stderr, "Linux Doctor: unable to collect storage: %s\n", error);
         return 1;
@@ -150,4 +156,52 @@ int main(int argc, char **argv)
     }
     (void)printf("Linux Doctor: report written to %s\n", output_path);
     return 0;
+}
+
+int main(int argc, char **argv)
+{
+    const char *output_path = "report.json";
+    const char *check_knowledge_path = NULL;
+    const char *install_knowledge_path = NULL;
+    bool history_enabled = false;
+    bool output_requested = false;
+    bool future_lab_json = false;
+
+    for (int index = 1; index < argc; index++) {
+        if (strcmp(argv[index], "--history") == 0) {
+            history_enabled = true;
+        } else if (strcmp(argv[index], "--output") == 0 && index + 1 < argc) {
+            output_requested = true;
+            output_path = argv[++index];
+        } else if (strcmp(argv[index], "--version") == 0) {
+            if (argc != 2) {
+                print_usage(argv[0]);
+                return 2;
+            }
+            (void)printf("Linux Doctor Gamer Edition %s\n", LINUX_DOCTOR_VERSION);
+            return 0;
+        } else if (strcmp(argv[index], "--future-lab-json") == 0) {
+            future_lab_json = true;
+        } else if (strcmp(argv[index], "--check-knowledge") == 0 && index + 1 < argc) {
+            check_knowledge_path = argv[++index];
+        } else if (strcmp(argv[index], "--install-knowledge") == 0 && index + 1 < argc) {
+            install_knowledge_path = argv[++index];
+        } else {
+            print_usage(argv[0]);
+            return 2;
+        }
+    }
+    if (check_knowledge_path != NULL && install_knowledge_path != NULL) {
+        print_usage(argv[0]);
+        return 2;
+    }
+    if (future_lab_json && (history_enabled || output_requested ||
+        check_knowledge_path != NULL || install_knowledge_path != NULL)) {
+        print_usage(argv[0]);
+        return 2;
+    }
+    if (future_lab_json) return write_future_lab_stdout();
+    if (check_knowledge_path != NULL) return check_knowledge_database(check_knowledge_path);
+    if (install_knowledge_path != NULL) return install_knowledge_database(install_knowledge_path);
+    return write_full_report(output_path, history_enabled);
 }

@@ -2,3 +2,10 @@
 /.vscode/
 /frontend/report.json
 /frontend/report.json.tmp.*
+/frontend/future-lab-live.json
+/frontend/future-lab-live.json.tmp.*
+/frontend/future-lab-live.lock
+/frontend/models/*
+!/frontend/models/README.md
+/frontend/vendor/transformers/*
+!/frontend/vendor/transformers/README.md

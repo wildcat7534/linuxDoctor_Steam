@@ -850,7 +850,7 @@ function createFutureLabCounterCard(icon, name, items) {
   return card;
 }
 
-function renderFutureLab(cards, report) {
+function renderFutureLabLegacy(cards, report) {
   const lab = report.future_lab || {};
   const sections = [lab.cpu, lab.load, lab.memory, lab.network, lab.disks];
   const availableCount = sections.filter(futureLabAvailable).length;
@@ -1014,6 +1014,57 @@ function renderFutureLab(cards, report) {
   }
   diskDetails.append(diskSummary, diskBody);
   cards.push(diskDetails);
+}
+
+function renderFutureLab(cards, report) {
+  const lab = report.future_lab || {};
+  const availableCount = [lab.cpu, lab.load, lab.memory, lab.network, lab.disks].filter(futureLabAvailable).length;
+  const portal = document.createElement('article');
+  portal.className = `future-lab-guide ${availableCount ? 'status-info' : 'status-unknown'}`;
+
+  const head = document.createElement('div');
+  head.className = 'future-lab-guide-head';
+  const copy = document.createElement('div');
+  const title = document.createElement('h3');
+  title.textContent = '🚀 Future Lab possède maintenant son propre cockpit';
+  const summary = document.createElement('p');
+  summary.textContent = availableCount
+    ? `${availableCount}/5 sources locales sont prêtes. La fenêtre dédiée transforme les instantanés successifs en courbes CPU, RAM, réseau et disque.`
+    : 'La fenêtre dédiée reste accessible et expliquera quelles sources locales sont momentanément indisponibles.';
+  copy.append(title, summary);
+
+  const launch = document.createElement('a');
+  launch.className = 'primary';
+  launch.href = 'future-lab.html';
+  launch.target = 'linux-doctor-future-lab';
+  launch.rel = 'noopener';
+  launch.textContent = 'Ouvrir le cockpit ↗';
+  launch.setAttribute('aria-label', 'Ouvrir le cockpit Future Lab dans une fenêtre séparée');
+  head.append(copy, launch);
+
+  const principles = document.createElement('div');
+  principles.className = 'future-lab-principles';
+  [
+    ['📈', 'Taux réels', 'CPU, réseau et disques utilisent les deltas entre deux instantanés comparables.'],
+    ['⏱️', 'Timeline locale', '60 points par défaut, 120 maximum, conservés uniquement dans la page.'],
+    ['🧠', 'Copilote local', 'Une zone dédiée accueille le petit modèle local sans remplacer les mesures.']
+  ].forEach(([iconValue, titleValue, textValue]) => {
+    const item = document.createElement('section');
+    const icon = document.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = iconValue;
+    const itemCopy = document.createElement('div');
+    const itemTitle = document.createElement('strong');
+    itemTitle.textContent = titleValue;
+    const itemText = document.createElement('p');
+    itemText.textContent = textValue;
+    itemCopy.append(itemTitle, itemText);
+    item.append(icon, itemCopy);
+    principles.appendChild(item);
+  });
+
+  portal.append(head, principles);
+  cards.push(portal);
 }
 
 function renderDiagnostics(report) {

@@ -322,13 +322,14 @@ static int parse_diskstats_line(const char *line, FutureLabDiskDevice *device)
     const char *cursor = line;
     const char *name_begin;
     size_t name_length;
-    uint64_t ignored;
+    uint64_t major;
+    uint64_t minor;
     uint64_t fields[11];
     size_t field_count = 0U;
 
     if (line == NULL || device == NULL) return -1;
-    if (parse_u64(&cursor, &ignored) != 0 || !isspace((unsigned char)*cursor) ||
-        parse_u64(&cursor, &ignored) != 0 || !isspace((unsigned char)*cursor)) return -1;
+    if (parse_u64(&cursor, &major) != 0 || !isspace((unsigned char)*cursor) ||
+        parse_u64(&cursor, &minor) != 0 || !isspace((unsigned char)*cursor)) return -1;
     skip_spaces(&cursor);
     name_begin = cursor;
     while (*cursor != '\0' && !isspace((unsigned char)*cursor)) cursor++;
@@ -348,6 +349,8 @@ static int parse_diskstats_line(const char *line, FutureLabDiskDevice *device)
     *device = (FutureLabDiskDevice){0};
     (void)memcpy(device->name, name_begin, name_length);
     device->name[name_length] = '\0';
+    device->major = major;
+    device->minor = minor;
     device->reads_completed = fields[0];
     device->sectors_read = fields[2];
     device->writes_completed = fields[4];

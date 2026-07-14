@@ -1,2 +1,4 @@
 /build/
+/.vscode/
 /frontend/report.json
+/frontend/report.json.tmp.*

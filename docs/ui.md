@@ -2,7 +2,7 @@
 
 ## Objectif
 
-L'interface doit donner envie d'explorer l'état de sa machine, sans ressembler à une sortie de terminal. L'inspiration est un tableau de bord moderne, avec une densité d'information maîtrisée et une identité Linux chaleureuse.
+L'interface doit aider d'abord une personne non spécialiste à préparer Ubuntu pour jouer, sans ressembler à une sortie de terminal. L'inspiration est un tableau de bord moderne, avec une densité d'information maîtrisée, une identité Linux chaleureuse et des bilans illustrés avant tout inventaire long.
 
 ## Écran principal
 
@@ -11,7 +11,7 @@ L'interface doit donner envie d'explorer l'état de sa machine, sans ressembler 
 - Des cartes par catégorie : Operating System, Hardware, Graphics, Gaming, AI, Network, Storage, Security, Services et Updates.
 - Chaque carte montre un état (`OK`, `Warning`, `Problem` ou `Unknown`), la priorité et un résumé actionnable.
 - Les filtres permettent d'afficher les problèmes, avertissements ou toutes les informations.
-- Une section « Tout fonctionne correctement » met en valeur les vérifications positives sans diluer les priorités.
+- Une section compacte « Ce qui est déjà prêt pour jouer » apparaît juste après l'en-tête et met en valeur les vérifications positives avant les listes longues.
 
 ## Historique et changement utile
 
@@ -43,3 +43,18 @@ Exemple : pour une partition système à 97 %, expliquer que l'espace libre faci
 - Les états d'absence de données expliquent ce qui manque et, si possible, comment l'obtenir.
 - L'interface reste utilisable au clavier, lisible avec un contraste suffisant et adaptable aux petites fenêtres.
 - La navigation par catégories évite une page interminable ; l'accueil reste une synthèse, pas un inventaire.
+- Chaque catégorie commence par « Le petit bilan » et quatre faits courts accompagnés d'icônes. L'explication du score apparaît immédiatement dans ce bilan ; une valeur inconnue est représentée par un tiret et jamais par un faux 0 %.
+- Les jeux Steam et leurs icônes sont ouverts par défaut parce qu'ils constituent la partie la plus visuelle du domaine Gaming ; la personne peut toujours replier la liste.
+- Les disques physiques conservent une synthèse visible, tandis que partitions, montages et preuves techniques sont repliés par défaut. Un raccourci vers un disque ouvre automatiquement son détail.
+- Le comparatif énergétique affiche un titre lumineux et animé autour de « 100 h de jeu ». L'animation est désactivée lorsque le système demande une réduction des mouvements.
+- Une flèche de retour en haut apparaît après défilement. Les liens externes, dont GitHub, s'ouvrent dans un nouvel onglet.
+- Les manettes détectées reçoivent un badge de famille et, pour Steam/Valve, le logo Steam local. Un badge générique évite de masquer un modèle non reconnu.
+- Une jaquette absente n'est jamais téléchargée automatiquement : l'interface utilise la petite icône locale du cache Steam ou un pictogramme de secours.
+
+## Mises à jour APT et authentification
+
+La page **Mises à jour** présente chaque candidat avec les versions installée et proposée, l'architecture, le dépôt, le paquet source et une réponse visible à « À quoi sert ce paquet ? ». Les états « prêt », « déploiement progressif », « retenu », « différé » et « inconnu » restent distincts. La description APT peut être en anglais : elle est donc repliée derrière « Afficher la description technique » et précise qu'elle décrit le rôle du paquet, pas les changements exacts de la version.
+
+Le frontend statique ne contient jamais de champ de mot de passe. Il peut copier `./scripts/refresh-updates.sh`, mais la personne lance cette commande depuis la racine du projet dans un terminal afin que `sudo` possède seul la saisie du secret. Cette actualisation modifie les index APT, pas les paquets installés ; le rapport précédent reste consultable en cas de refus ou d'échec.
+
+La copie emploie d'abord l'API moderne du presse-papiers puis une sélection locale de secours pour les navigateurs ou contextes qui la refusent. En dernier recours, la commande reste visible et sélectionnable.

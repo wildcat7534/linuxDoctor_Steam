@@ -1,6 +1,6 @@
 # Vision — Linux Doctor
 
-Linux Doctor est un outil de diagnostic Linux local, rapide et agréable à consulter. Il ne se contente pas d'exposer des données système : il les interprète, priorise les problèmes et explique leurs conséquences dans un langage clair.
+Linux Doctor est un assistant Ubuntu Gaming local, rapide et agréable à consulter. Sa priorité est d'aider une personne ordinaire à comprendre si son PC possède de bonnes fondations pour Steam, Proton, ses manettes et GeForce NOW. Il ne se contente pas d'exposer des données système : il les interprète, priorise les problèmes et explique leurs conséquences dans un langage clair.
 
 Il devient aussi, si la personne le souhaite, un compagnon de santé local : les analyses successives permettent de voir les progrès, les régressions et les changements importants de la machine.
 
@@ -8,7 +8,7 @@ Il devient aussi, si la personne le souhaite, un compagnon de santé local : les
 
 Répondre à trois questions, pour chaque machine :
 
-1. **Quel est son état ?** — un aperçu fiable, avec un score et des catégories.
+1. **Puis-je jouer dans de bonnes conditions ?** — un aperçu des fondations Ubuntu, Steam et graphiques réellement observables.
 2. **Que faut-il améliorer ?** — des alertes concrètes, classées par importance.
 3. **Pourquoi cela compte ?** — une explication courte, pédagogique et adaptée au contexte.
 
@@ -27,8 +27,8 @@ L'application est donc à la fois un tableau de bord de diagnostic, un assistant
 
 ## Publics
 
-- Personnes découvrant Linux qui veulent comprendre un avertissement plutôt que rechercher chaque terme.
-- Joueurs et joueuses vérifiant Steam, Proton, pilotes graphiques et périphériques.
+- Joueurs et joueuses découvrant Ubuntu qui veulent comprendre un avertissement plutôt que rechercher chaque terme.
+- Personnes vérifiant Steam, Proton, pilotes graphiques, GeForce NOW et périphériques avant de jouer.
 - Développeurs, administrateurs et passionnés souhaitant un état rapide, exportable et justifiable.
 
 ## Ce que Linux Doctor n'est pas

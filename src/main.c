@@ -7,6 +7,8 @@
 #include "volume.h"
 #include "migration.h"
 #include "gfn.h"
+#include "graphics.h"
+#include "knowledge.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -28,6 +30,8 @@ int main(int argc, char **argv)
     VolumeInventory volumes;
     MigrationPlan migration;
     GeForceNowInfo gfn;
+    GraphicsInfo graphics;
+    GamingKnowledgeBase knowledge;
     HistoryComparison history = {0};
     char error[256];
     FILE *output;
@@ -64,17 +68,29 @@ int main(int argc, char **argv)
     }
     migration_plan_build(&migration, &storage, &volumes, &steam);
     gfn_collect(&gfn, &steam);
-    if (history_enabled && history_update(&history, storage.used_percent >= 95U ? 45 : storage.used_percent >= 85U ? 75 : 96,
-        storage.used_percent, NULL, error, sizeof(error)) != 0) {
-        (void)fprintf(stderr, "Linux Doctor: unable to update history: %s\n", error);
-        return 1;
+    if (gaming_knowledge_load(&knowledge, "data/gaming-knowledge.tsv", &steam, &gfn,
+        error, sizeof(error)) != 0) {
+        knowledge = (GamingKnowledgeBase){0};
+    }
+    if (graphics_collect(&graphics, error, sizeof(error)) != 0) {
+        graphics = (GraphicsInfo){0};
+    }
+    if (history_enabled) {
+        if (!report_health_complete(&storage, &graphics)) {
+            history = (HistoryComparison){.enabled = true, .current_score_complete = false};
+        } else if (history_update(&history, report_health_score(&storage, &graphics),
+            storage.used_percent, NULL, error, sizeof(error)) != 0) {
+            (void)fprintf(stderr, "Linux Doctor: unable to update history: %s\n", error);
+            return 1;
+        }
     }
     output = fopen(output_path, "w");
     if (output == NULL) {
         (void)fprintf(stderr, "Linux Doctor: cannot write %s: %s\n", output_path, strerror(errno));
         return 1;
     }
-    if (report_write(output, &storage, &updates, &apps, &steam, &volumes, &migration, &gfn, &history) != 0) {
+    if (report_write(output, &storage, &updates, &apps, &steam, &volumes, &migration,
+        &gfn, &graphics, &knowledge, &history) != 0) {
         (void)fclose(output);
         (void)fprintf(stderr, "Linux Doctor: cannot write report %s\n", output_path);
         return 1;

@@ -10,6 +10,7 @@
 
 #define HISTORY_LIMIT 30U
 #define HISTORY_PATH_CAPACITY 4096U
+#define HISTORY_FILENAME "snapshots-v2.csv"
 
 typedef struct HistoryRecord {
     long long timestamp;
@@ -101,11 +102,11 @@ int history_update(HistoryComparison *comparison, int score,
     size_t count;
 
     if (comparison == NULL || resolve_directory(directory, sizeof(directory), state_directory) != 0 || create_directories(directory) != 0 ||
-        snprintf(path, sizeof(path), "%s/snapshots.csv", directory) >= (int)sizeof(path)) {
+        snprintf(path, sizeof(path), "%s/%s", directory, HISTORY_FILENAME) >= (int)sizeof(path)) {
         set_error(error, error_size, "Unable to prepare the local history directory.");
         return -1;
     }
-    *comparison = (HistoryComparison){.enabled = true};
+    *comparison = (HistoryComparison){.enabled = true, .current_score_complete = true};
     count = read_records(path, records);
     if (count > 0) {
         comparison->has_previous = true;

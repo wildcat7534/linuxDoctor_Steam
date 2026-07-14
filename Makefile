@@ -1,8 +1,9 @@
 CC := cc
 VERSION := $(shell tr -d '\n' < VERSION)
 CFLAGS := -std=c17 -Wall -Wextra -Werror -Wpedantic -Iinclude -DLINUX_DOCTOR_VERSION=\"$(VERSION)\"
+LDLIBS := -ldl
 BUILD_DIR := build
-SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c
+SOURCES := src/main.c src/storage.c src/json.c src/report.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/graphics.c src/knowledge.c
 TARGET := $(BUILD_DIR)/linux-doctor
 
 .PHONY: all clean test run
@@ -10,7 +11,7 @@ TARGET := $(BUILD_DIR)/linux-doctor
 all: $(TARGET)
 
 $(TARGET): $(SOURCES) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SOURCES) -o $@
+	$(CC) $(CFLAGS) $(SOURCES) -o $@ $(LDLIBS)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -22,7 +23,9 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_json
 	$(CC) $(CFLAGS) tests/test_history.c src/history.c -o $(BUILD_DIR)/test_history
 	$(BUILD_DIR)/test_history
-	$(CC) $(CFLAGS) tests/test_updates.c src/updates.c -o $(BUILD_DIR)/test_updates
+	$(CC) $(CFLAGS) tests/test_process.c src/process.c -o $(BUILD_DIR)/test_process
+	$(BUILD_DIR)/test_process
+	$(CC) $(CFLAGS) tests/test_updates.c src/updates.c src/process.c -o $(BUILD_DIR)/test_updates
 	$(BUILD_DIR)/test_updates
 	$(CC) $(CFLAGS) tests/test_apps.c src/apps.c -o $(BUILD_DIR)/test_apps
 	$(BUILD_DIR)/test_apps
@@ -34,7 +37,11 @@ test: | $(BUILD_DIR)
 	$(BUILD_DIR)/test_migration
 	$(CC) $(CFLAGS) tests/test_gfn.c src/gfn.c -o $(BUILD_DIR)/test_gfn
 	$(BUILD_DIR)/test_gfn
-	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c -o $(BUILD_DIR)/test_report
+	$(CC) $(CFLAGS) tests/test_graphics.c src/graphics.c -o $(BUILD_DIR)/test_graphics $(LDLIBS)
+	$(BUILD_DIR)/test_graphics
+	$(CC) $(CFLAGS) tests/test_knowledge.c src/knowledge.c -o $(BUILD_DIR)/test_knowledge
+	$(BUILD_DIR)/test_knowledge
+	$(CC) $(CFLAGS) tests/test_report.c src/report.c src/storage.c src/json.c src/history.c src/updates.c src/process.c src/apps.c src/steam.c src/volume.c src/migration.c src/gfn.c src/knowledge.c -o $(BUILD_DIR)/test_report
 	$(BUILD_DIR)/test_report
 
 run: $(TARGET)

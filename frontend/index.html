@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-store, max-age=0">
   <meta http-equiv="Pragma" content="no-cache">
-  <title>Linux Doctor — Gamer Edition</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="styles.css?v=0.5.0">
+  <title>Linux Doctor — Assistant Ubuntu Gaming</title>
+  <link rel="icon" type="image/png" href="assets/new_logo_2026_9.png">
+  <link rel="stylesheet" href="styles.css?v=0.8.0">
 </head>
 <body>
   <main class="app">
     <header class="app-header">
-      <p class="eyebrow">Diagnostic gaming local</p>
-      <h1>Linux Doctor <span>Gamer Edition</span></h1>
-      <small>Steam et stockage aujourd'hui · pilotes, performances et services gaming ensuite</small>
+      <div class="header-lockup">
+        <img class="app-logo" src="assets/new_logo_2026_9.png" alt="Logo WiLDCaT, félin végétal et cyberpunk">
+        <div>
+          <p class="eyebrow">Votre compagnon Ubuntu Gaming</p>
+          <h1>Linux Doctor <span>Gamer Edition</span></h1>
+          <small>Préparer simplement Ubuntu pour Steam, Proton, les manettes et GeForce NOW.</small>
+        </div>
+      </div>
       <div class="brand-strip" aria-label="Plateformes prises en charge">
         <span class="brand linux"><span aria-hidden="true">🐧</span> Linux</span><span class="brand steam"><img src="assets/steam.svg" alt="">Steam</span><span class="brand nvidia">NVIDIA GeForce NOW</span>
       </div>
@@ -22,7 +27,7 @@
 
     <section class="panel hero">
       <div class="hero-copy">
-        <p class="eyebrow">Résumé</p>
+        <p class="eyebrow">Bilan gaming</p>
         <h2 id="greeting">Bonjour</h2>
         <p id="last-analysis" class="muted">Analyse en cours…</p>
         <p id="overview" class="overview">Chargement du rapport…</p>
@@ -30,16 +35,28 @@
       </div>
       <div class="hero-actions">
         <div id="score-ring" class="score-ring"><strong id="score">—</strong><span>/ 100</span></div>
-        <button id="analyze" class="primary">Analyser maintenant</button>
+        <small class="score-scope">Socle mesuré : stockage + graphismes</small>
+        <button id="analyze" class="primary" title="Recharge le dernier rapport généré localement">Recharger le rapport</button>
         <div id="analysis-progress" class="analysis-progress" hidden><span></span></div>
       </div>
+    </section>
+
+    <section class="panel good-news-panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Les petites victoires</p>
+          <h2>😺 Ce qui est déjà prêt pour jouer</h2>
+        </div>
+        <p class="muted">Les bons signaux utiles, juste après le bilan général.</p>
+      </div>
+      <div id="good-news" class="good-news"></div>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Catégories</p>
-          <h2>Navigation par domaine</h2>
+          <p class="eyebrow">Par où commencer ?</p>
+          <h2>Les vérifications pour bien jouer</h2>
         </div>
         <p class="muted">Choisissez un onglet pour afficher son diagnostic détaillé.</p>
       </div>
@@ -51,23 +68,13 @@
     <section class="panel">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Détails</p>
-          <h2 id="selected-category-title">Diagnostics</h2>
+          <p class="eyebrow">Conseils et vérifications</p>
+          <h2 id="selected-category-title">Diagnostic guidé</h2>
         </div>
         <p id="selected-category-summary" class="muted"></p>
       </div>
-      <div id="diagnostics" class="diagnostic-list" aria-live="polite"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Bonnes nouvelles</p>
-          <h2>Tout fonctionne correctement</h2>
-        </div>
-        <p class="muted">Vérifications réussies : aucune action n'est nécessaire.</p>
-      </div>
-      <div id="good-news" class="good-news"></div>
+      <p id="diagnostics-status" class="sr-only" aria-live="polite"></p>
+      <div id="diagnostics" class="diagnostic-list" role="tabpanel" tabindex="0"></div>
     </section>
 
     <section id="history" class="panel history" hidden>
@@ -86,9 +93,11 @@
       <div id="history-changes" class="history-changes"></div>
     </section>
 
-    <footer class="app-footer"><span id="app-version">Linux Doctor Gamer Edition</span> · <a id="repository-link" href="https://github.com/wildcat7534/linuxDoctor_Steam">GitHub</a></footer>
-    <section class="credits" aria-label="Crédits"><img src="assets/wildcat-logo.png" alt="Emblème WiLDCaT, visage de chat sauvage cyberpunk doré"><div><h2>Crédits</h2><p><strong>WiLDCaT</strong> — vision produit et créateur du projet.</p><p>Linux Doctor est un projet local open source. Tux est la mascotte de Linux ; Steam et NVIDIA GeForce NOW sont des marques de leurs propriétaires. Données tarifaires France : CRE. Icône Steam : Wikimedia Commons.</p></div></section>
+    <footer class="app-footer"><span id="app-version">Linux Doctor Gamer Edition</span> · <a id="repository-link" href="https://github.com/wildcat7534/linuxDoctor_Steam" target="_blank" rel="noreferrer">GitHub</a></footer>
+    <section class="credits" aria-label="Crédits"><img src="assets/new_logo_2026_9.png" alt="Emblème WiLDCaT, félin végétal et cyberpunk"><div><h2>Crédits</h2><p><strong>WiLDCaT</strong> — vision produit et créateur du projet.</p><p>Linux Doctor est un assistant gaming local et open source. Tux est la mascotte de Linux ; Steam et NVIDIA GeForce NOW sont des marques de leurs propriétaires. Données tarifaires France : CRE. Icône Steam : Wikimedia Commons.</p></div></section>
   </main>
+
+  <button id="scroll-top" class="scroll-top" type="button" aria-label="Remonter en haut de la page" title="Remonter en haut">↑</button>
 
   <dialog id="insight-dialog">
     <form method="dialog" class="dialog-close">
@@ -111,7 +120,7 @@
         <p id="dialog-impact"></p>
       </section>
       <section>
-        <h3>Comment réparer</h3>
+        <h3>Que faire ensuite</h3>
         <p id="dialog-next-step"></p>
       </section>
     </div>
@@ -121,6 +130,6 @@
     </section>
   </dialog>
 
-  <script src="app.js?v=0.5.0"></script>
+  <script src="app.js?v=0.8.0"></script>
 </body>
 </html>

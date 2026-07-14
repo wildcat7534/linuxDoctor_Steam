@@ -5,7 +5,8 @@
 int main(void)
 {
     GeForceNowInfo gfn;
-    SteamInfo steam = {.ubuntu = true, .ubuntu_version = "26.04", .controller_detected = true};
+    SteamInfo steam = {.ubuntu = true, .ubuntu_version = "26.04", .controller_detected = true,
+        .controller_count = 1U, .controllers = {{.name = "Steam Controller", .kind = "steam"}}};
 
     gfn_collect(NULL, &steam);
     gfn_collect(&gfn, &steam);

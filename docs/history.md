@@ -38,6 +38,10 @@ Le rapport courant peut exposer un bloc `history` qui contient uniquement les co
 
 La première implémentation conserve les 30 derniers snapshots détaillés et remplace le plus ancien lorsque cette limite est atteinte. Une future évolution pourra remplacer les données quotidiennes plus anciennes par un résumé mensuel : score min/max, derniers états des diagnostics et quelques mesures agrégées.
 
+La V0.6 change le périmètre du score global pour inclure le stockage et le socle graphique. Elle démarre donc une série `snapshots-v2.csv` distincte : l'ancien fichier `snapshots.csv` reste localement intact, mais n'est pas comparé au nouveau score.
+
+Si le score est incomplet, par exemple lors d'une analyse hors session Wayland/X11, aucun snapshot n'est ajouté et le rapport marque la comparaison incompatible. Cela évite de transformer une absence de contexte en fausse chute de santé.
+
 ## Cas à traiter avant implémentation
 
 - Première analyse : aucune comparaison n'est affichée.

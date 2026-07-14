@@ -26,6 +26,8 @@ Les sévérités sont `ok`, `info`, `warning`, `problem` et `unknown`. `unknown`
 
 Les résultats doivent être déterministes pour une même machine et inclure la source de chaque fait (fichier système, commande, API). Les commandes externes sont limitées, avec délai d'expiration et erreurs converties en résultats exploitables.
 
+Le collecteur `updates` utilise uniquement une simulation locale APT pour son diagnostic. Il distingue un candidat disponible d'un paquet sélectionné pour l'installation immédiate ; un déploiement progressif ou une décision de dépendances ne doit pas être présenté comme une panne. Les descriptions locales indiquent le rôle du paquet, pas le détail du nouveau changelog.
+
 ## Ajouter un plugin
 
 - Choisir un identifiant stable, tel que `steam.controller.detected`.

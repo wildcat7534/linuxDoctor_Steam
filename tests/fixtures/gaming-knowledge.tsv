@@ -1,0 +1,5 @@
+# fixture
+game	4242	warning	Problème connu du jeu test	Le jeu test demande une vérification locale.	Essayer la version de Proton documentée.	https://example.com/game	2026-07-14
+game	9999	info	Jeu absent	Cette fiche ne doit pas être pertinente.	Aucune action.	https://example.com/absent	2026-07-14
+controller	steam-controller	info	Guide manette	Vérifier Steam Input.	Ouvrir le test d'entrée Steam.	https://example.com/controller	2026-07-14
+invalid	line

@@ -6,6 +6,7 @@
 
 typedef struct HistoryComparison {
     bool enabled;
+    bool current_score_complete;
     bool has_previous;
     int previous_score;
     unsigned int previous_used_percent;

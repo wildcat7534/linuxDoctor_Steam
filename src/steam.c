@@ -1,5 +1,6 @@
 #include "steam.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -71,24 +72,77 @@ static void collect_dpkg(SteamInfo *steam)
     (void)fclose(architectures);
 }
 
-static void collect_controller(SteamInfo *steam)
+const char *steam_controller_kind(const char *name)
+{
+    if (name == NULL || strstr(name, "Consumer Control") != NULL) return NULL;
+    if (strstr(name, "Steam Controller") != NULL || strstr(name, "Steam Deck") != NULL ||
+        strstr(name, "Valve Software") != NULL) return "steam";
+    if (strstr(name, "Xbox") != NULL || strstr(name, "X-Box") != NULL ||
+        strstr(name, "Microsoft X-Box") != NULL) return "xbox";
+    if (strstr(name, "DualSense") != NULL || strstr(name, "DualShock") != NULL ||
+        strstr(name, "PLAYSTATION") != NULL || strstr(name, "PlayStation") != NULL ||
+        strstr(name, "Sony Interactive") != NULL) return "playstation";
+    if (strstr(name, "Nintendo") != NULL || strstr(name, "Joy-Con") != NULL ||
+        strstr(name, "Switch Pro") != NULL) return "nintendo";
+    if (strstr(name, "8BitDo") != NULL || strstr(name, "8BITDO") != NULL) return "8bitdo";
+    if (strstr(name, "Gamepad") != NULL || strstr(name, "Joystick") != NULL ||
+        strstr(name, "Game Controller") != NULL) return "generic";
+    return NULL;
+}
+
+static const char *controller_display_name(const char *name, const char *kind)
+{
+    if (strcmp(kind, "steam") != 0) return name;
+    return strstr(name, "Steam Deck") != NULL ? "Steam Deck" : "Steam Controller";
+}
+
+static void add_controller(SteamInfo *steam, const char *name, const char *kind)
+{
+    const char *display_name = controller_display_name(name, kind);
+    size_t index;
+
+    for (index = 0U; index < steam->controller_count; index++) {
+        if (strcmp(steam->controllers[index].name, display_name) == 0 &&
+            strcmp(steam->controllers[index].kind, kind) == 0) return;
+    }
+    if (steam->controller_count == STEAM_CONTROLLER_LIMIT) {
+        steam->inventory_truncated = true;
+        return;
+    }
+    (void)snprintf(steam->controllers[steam->controller_count].name,
+        sizeof(steam->controllers[steam->controller_count].name), "%s", display_name);
+    (void)snprintf(steam->controllers[steam->controller_count].kind,
+        sizeof(steam->controllers[steam->controller_count].kind), "%s", kind);
+    steam->controller_count++;
+    if (strcmp(kind, "steam") == 0 && !steam->controller_detected) {
+        steam->controller_detected = true;
+        (void)snprintf(steam->controller_name, sizeof(steam->controller_name), "%s", display_name);
+    }
+}
+
+static void collect_controllers(SteamInfo *steam)
 {
     FILE *stream = fopen("/proc/bus/input/devices", "r");
     char line[512];
-    const char *name;
+    char name[STEAM_NAME_CAPACITY];
+    const char *start;
     const char *end;
 
     if (stream == NULL) return;
     while (fgets(line, sizeof(line), stream) != NULL) {
-        if (strncmp(line, "N: Name=\"", 9) != 0 || strstr(line, "Steam Controller") == NULL) continue;
-        name = line + 9;
-        end = strchr(name, '"');
+        const char *kind;
+        size_t length;
+
+        if (strncmp(line, "N: Name=\"", 9) != 0) continue;
+        start = line + 9;
+        end = strchr(start, '"');
         if (end == NULL) continue;
-        steam->controller_detected = true;
-        if ((size_t)(end - name) >= sizeof(steam->controller_name)) end = name + sizeof(steam->controller_name) - 1U;
-        (void)memcpy(steam->controller_name, name, (size_t)(end - name));
-        steam->controller_name[end - name] = '\0';
-        break;
+        length = (size_t)(end - start);
+        if (length == 0U || length >= sizeof(name)) continue;
+        (void)memcpy(name, start, length);
+        name[length] = '\0';
+        kind = steam_controller_kind(name);
+        if (kind != NULL) add_controller(steam, name, kind);
     }
     (void)fclose(stream);
 }
@@ -174,7 +228,42 @@ static bool vdf_value(const char *line, const char *key, char *value, size_t val
     return true;
 }
 
-static void collect_games(SteamInfo *steam, size_t library_index)
+static bool steam_icon_filename(const char *name)
+{
+    size_t index;
+
+    if (strlen(name) != 44U || strcmp(name + 40U, ".jpg") != 0) return false;
+    for (index = 0U; index < 40U; index++) {
+        if (!isxdigit((unsigned char)name[index])) return false;
+    }
+    return true;
+}
+
+static void collect_game_icon(SteamGame *game, const char *client_root)
+{
+    char directory_path[VOLUME_TEXT_CAPACITY * 2U];
+    DIR *directory;
+    struct dirent *entry;
+
+    if (snprintf(directory_path, sizeof(directory_path), "%s/appcache/librarycache/%s",
+        client_root, game->appid) >= (int)sizeof(directory_path)) return;
+    directory = opendir(directory_path);
+    if (directory == NULL) return;
+    while ((entry = readdir(directory)) != NULL) {
+        char candidate[VOLUME_TEXT_CAPACITY * 2U];
+        struct stat metadata;
+
+        if (!steam_icon_filename(entry->d_name) ||
+            snprintf(candidate, sizeof(candidate), "%s/%s", directory_path, entry->d_name) >= (int)sizeof(candidate) ||
+            stat(candidate, &metadata) != 0 || !S_ISREG(metadata.st_mode) || metadata.st_size <= 0 ||
+            (uintmax_t)metadata.st_size > STEAM_ICON_MAX_BYTES) continue;
+        (void)snprintf(game->icon_path, sizeof(game->icon_path), "%s", candidate);
+        break;
+    }
+    (void)closedir(directory);
+}
+
+static void collect_games(SteamInfo *steam, size_t library_index, const char *client_root)
 {
     SteamLibrary *library = &steam->libraries[library_index];
     char steamapps[VOLUME_TEXT_CAPACITY * 2U];
@@ -211,6 +300,7 @@ static void collect_games(SteamInfo *steam, size_t library_index)
         game = &steam->games[steam->game_count++];
         (void)snprintf(game->appid, sizeof(game->appid), "%s", appid);
         (void)snprintf(game->name, sizeof(game->name), "%s", name[0] == '\0' ? appid : name);
+        collect_game_icon(game, client_root);
         game->size_bytes = strtoull(size, NULL, 10);
         game->library_index = library_index;
         if (snprintf(manifest_path, sizeof(manifest_path), "%s/common/%s", steamapps, install_directory) < (int)sizeof(manifest_path) &&
@@ -238,7 +328,7 @@ static void collect_library_paths(SteamInfo *steam, const char *root, const Volu
     }
     (void)fclose(stream);
 collect:
-    for (index = first_library; index < steam->library_count; index++) collect_games(steam, index);
+    for (index = first_library; index < steam->library_count; index++) collect_games(steam, index, root);
 }
 
 static int compare_games_by_size(const void *first, const void *second)
@@ -260,7 +350,7 @@ int steam_collect(SteamInfo *steam, const VolumeInventory *volumes, char *error,
     *steam = (SteamInfo){0};
     collect_os_release(steam);
     collect_dpkg(steam);
-    collect_controller(steam);
+    collect_controllers(steam);
     {
         const char *home = getenv("HOME");
         char root[VOLUME_TEXT_CAPACITY];

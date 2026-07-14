@@ -21,6 +21,8 @@ body {
 
 .app { width: min(1180px, calc(100% - 1.25rem)); margin: 1.25rem auto 2rem; }
 .app-header { margin-bottom: 1rem; }
+.header-lockup { display: flex; align-items: center; gap: 1rem; }
+.app-logo { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 0 14px rgba(57, 205, 255, .25)) drop-shadow(0 0 10px rgba(234, 185, 74, .28)); }
 .eyebrow, .label {
   color: var(--accent);
   text-transform: uppercase;
@@ -78,6 +80,7 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 
 .score-ring strong { font-size: 3rem; line-height: 1; }
 .score-ring span { color: var(--muted); margin-top: -.5rem; }
+.score-scope { max-width: 190px; color: var(--muted); text-align: center; }
 
 .primary, button {
   border: 1px solid #5b7a5d;
@@ -213,6 +216,7 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
   padding: .25rem .5rem;
   border-radius: 999px;
   background: #223226;
+  cursor: help;
 }
 
 .status-ok { color: var(--accent); }
@@ -226,6 +230,30 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
   display: grid;
   gap: .7rem;
 }
+
+.category-snapshot {
+  display: grid;
+  gap: .9rem;
+  padding: 1rem;
+  border: 1px solid #47765a;
+  border-radius: 18px;
+  color: var(--text);
+  background: radial-gradient(circle at top right, rgba(82, 215, 171, .16), transparent 42%), linear-gradient(135deg, #183021, #111a14);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .15);
+}
+.snapshot-heading { display: flex; align-items: center; gap: .8rem; }
+.snapshot-heading > div { flex: 1; }
+.snapshot-heading h3 { margin-bottom: .2rem; color: #d9ffc0; }
+.snapshot-heading p { margin: 0; color: var(--muted); }
+.snapshot-mascot { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 auto; border: 1px solid #4d7f5c; border-radius: 16px; font-size: 1.85rem; background: #101b13; }
+.snapshot-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .55rem; }
+.snapshot-facts section { display: grid; grid-template-columns: auto 1fr; column-gap: .55rem; align-items: center; padding: .7rem; border: 1px solid #345842; border-radius: 13px; background: rgba(10, 20, 13, .72); }
+.snapshot-icon { grid-row: 1 / 3; font-size: 1.45rem; }
+.snapshot-facts strong { color: #eefbe9; overflow-wrap: anywhere; }
+.snapshot-facts small { color: var(--muted); }
+.score-explanation { display: grid; gap: .25rem; padding: .75rem .85rem; border: 1px solid #4b6b4d; border-radius: 13px; background: rgba(21, 36, 22, .9); }
+.score-explanation strong { color: #ffd878; }
+.score-explanation p { margin: 0; color: var(--muted); line-height: 1.45; }
 
 .diagnostic-card,
 .news-card,
@@ -247,6 +275,11 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
   border-radius: 16px;
   background: #101810;
 }
+.volume-group-summary { display: flex; justify-content: space-between; gap: .8rem; align-items: center; cursor: pointer; color: #bcefff; }
+.volume-group-summary strong { font-size: 1.08rem; }
+.volume-group-summary small { color: var(--muted); }
+.volume-group[open] .volume-group-summary { margin-bottom: .8rem; }
+.volume-group > .diagnostic-list { margin-top: .75rem; }
 .storage-overview { padding: 1rem; border: 1px solid #426b55; border-radius: 16px; background: linear-gradient(135deg, #16271a, #101810); }
 .disk-navigator { display: flex; flex-wrap: wrap; gap: .8rem; }
 .disk-shortcut { display: grid; min-width: 130px; justify-items: center; gap: .35rem; padding: .7rem; cursor: pointer; border-color: #416d5b; }
@@ -263,7 +296,6 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
   font-size: .75rem;
 }
 .disk-ring.protected { background: conic-gradient(var(--warning) var(--used), #3a3020 0); color: var(--warning); }
-.volume-group > h3 { margin-bottom: .75rem; color: #bcefff; }
 .dualboot-warning { margin: 0 0 .75rem; padding: .65rem .75rem; border: 1px solid var(--warning); border-radius: 10px; color: var(--warning); background: #2c2918; line-height: 1.45; }
 .volume-card.mounted { border-left: 4px solid var(--accent); }
 .volume-card.unmounted { border-left: 4px solid var(--warning); }
@@ -281,7 +313,17 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 .migration-selection { display: grid; gap: .45rem; }
 .migration-selection label { cursor: pointer; }
 .migration-summary { margin: 0; color: var(--accent); }
+.migration-details { border-top: 1px solid #314734; padding-top: .65rem; }
+.migration-details summary { width: fit-content; margin-bottom: .65rem; cursor: pointer; color: #9cecff; font-weight: 700; }
 .energy-panel { padding: 1rem; border: 1px solid #3c6f78; border-radius: 16px; background: linear-gradient(135deg, #102024, #111a12); }
+.energy-title { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .45rem; font-size: 1.25rem; }
+.energy-title > span { color: var(--muted); }
+.energy-title > strong { padding: .22rem .7rem; border: 1px solid #72e8ff; border-radius: 999px; color: #c9f8ff; background: #102f3a; box-shadow: 0 0 8px rgba(65, 215, 255, .65), inset 0 0 8px rgba(65, 215, 255, .18); animation: energy-title-glow 1.8s ease-in-out infinite alternate; }
+.energy-baseline { margin: 0; color: #9cecff; }
+@keyframes energy-title-glow {
+  from { box-shadow: 0 0 6px rgba(65, 215, 255, .5), inset 0 0 6px rgba(65, 215, 255, .12); transform: translateY(0); }
+  to { box-shadow: 0 0 18px rgba(65, 215, 255, .95), 0 0 30px rgba(65, 215, 255, .28), inset 0 0 12px rgba(65, 215, 255, .22); transform: translateY(-1px); }
+}
 .energy-controls { display: flex; flex-wrap: wrap; gap: .7rem; margin: .8rem 0; }
 .energy-controls label { display: grid; gap: .3rem; color: var(--muted); font-size: .85rem; }
 .energy-controls input { width: 150px; padding: .45rem; color: var(--text); border: 1px solid #4f8791; border-radius: 8px; background: #101a1c; }
@@ -289,13 +331,79 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 .energy-estimates section { display: grid; gap: .3rem; padding: .75rem; border: 1px solid #345e64; border-radius: 12px; background: #122025; }
 .energy-estimates b { color: #7ce8ff; font-size: 1.05rem; }
 .energy-estimates small { color: var(--muted); }
+.energy-profile strong { font-size: 1rem; }
+.energy-profile.gfn { border-color: #347f9a; background: linear-gradient(145deg, #102a35, #122025); }
+.energy-profile.gfn strong { color: #75e2ff; }
+.energy-profile.mid { border-color: #82713b; background: linear-gradient(145deg, #2a2515, #1b211d); }
+.energy-profile.mid strong { color: #ffd878; }
+.energy-profile.uber { border-color: #7b4574; background: linear-gradient(145deg, #2d172d, #1c1d26); }
+.energy-profile.uber strong { color: #ff9be8; }
 .membership-cost { margin: .2rem 0 .7rem; color: var(--accent-2); }
+.controller-panel { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #476b8b; border-radius: 16px; color: var(--text); background: linear-gradient(135deg, #111d2b, #121a14); }
+.controller-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .55rem; }
+.controller-device { display: flex; align-items: center; gap: .7rem; padding: .7rem; border: 1px solid #38546f; border-radius: 13px; background: #101925; }
+.controller-device > span:last-child { display: grid; gap: .15rem; }
+.controller-device small { color: var(--muted); }
+.controller-mark { display: grid; place-items: center; width: 48px; height: 48px; flex: 0 0 48px; border: 1px solid #52728d; border-radius: 50%; font-weight: 900; font-size: .9rem; background: #172b3d; }
+.controller-mark img { width: 30px; height: 30px; }
+.controller-mark.kind-xbox { color: #caffb3; border-color: #5ca943; background: #173019; }
+.controller-mark.kind-playstation { color: #d4e8ff; border-color: #477fc1; background: #15243c; }
+.controller-mark.kind-nintendo { color: white; border-color: #ef5b63; background: #b72f38; }
+.controller-mark.kind-8bitdo { color: #f2d8ff; border-color: #8d5aaa; background: #2b1936; }
+.controller-mark.kind-generic { font-size: 1.35rem; }
+.steam-games-details,
+.knowledge-details,
+.apt-description-details { border-top: 1px solid #314734; padding-top: .65rem; }
+.steam-games-details summary,
+.knowledge-details summary,
+.apt-description-details summary { width: fit-content; cursor: pointer; color: #9cecff; font-weight: 700; }
+.steam-game-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .5rem; margin-top: .75rem; }
+.steam-game { display: flex; align-items: center; gap: .65rem; min-width: 0; padding: .55rem; border: 1px solid #315761; border-radius: 12px; background: #101a1c; }
+.steam-game > span:last-child { display: grid; min-width: 0; gap: .15rem; }
+.steam-game strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steam-game small { color: var(--muted); }
+.steam-game-icon { position: relative; display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; overflow: hidden; border-radius: 10px; font-size: 1.25rem; background: #1d2a2e; }
+.steam-game-icon img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+.gaming-knowledge-card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #4c5d8a; border-radius: 16px; color: var(--text); background: linear-gradient(135deg, #171d35, #111a18); }
+.gaming-knowledge-card > p { margin: 0; color: var(--muted); }
+.knowledge-list { display: grid; gap: .55rem; margin-top: .75rem; }
+.knowledge-item { padding: .75rem; border: 1px solid #3e4e73; border-radius: 12px; background: #11182a; }
+.knowledge-item p { margin: .4rem 0; }
+.knowledge-item a { display: inline-block; margin-top: .35rem; color: #8fddff; }
 .app-card { display: grid; gap: .7rem; padding: 1rem; border: 1px solid #3e6971; border-radius: 16px; background: linear-gradient(135deg, #122126, #121a12); }
 .app-card code { width: fit-content; max-width: 100%; overflow-x: auto; padding: .5rem .65rem; border: 1px solid #315761; border-radius: 8px; color: #9cecff; background: #0c1518; }
+.apt-refresh-card,
+.apt-overview,
+.apt-update-card { display: grid; gap: .75rem; padding: 1rem; border: 1px solid #3e6971; border-radius: 16px; background: linear-gradient(135deg, #122126, #121a12); }
+.apt-refresh-card { border-color: #4f8791; }
+.apt-refresh-card code { width: fit-content; max-width: 100%; overflow-x: auto; padding: .55rem .7rem; border: 1px solid #4f8791; border-radius: 8px; color: #9cecff; background: #0c1518; }
+.apt-overview { border-color: #416d5b; }
+.apt-update-card { border-left: 4px solid #4f8791; }
+.apt-update-card.has-security { border-left-color: var(--warning); }
+.apt-packages-details { padding: .9rem 1rem; border: 1px solid #3e6971; border-radius: 16px; background: #101a1c; }
+.apt-packages-details > summary { cursor: pointer; color: #9cecff; font-weight: 800; }
+.apt-package-list { display: grid; gap: .7rem; margin-top: .8rem; }
+.apt-version { margin: 0; color: #9cecff; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.apt-role { padding: .8rem; border: 1px solid #314734; border-radius: 12px; background: #101810; }
+.apt-role h4 { margin-bottom: .4rem; color: var(--accent-2); }
+.apt-description { white-space: pre-line; }
+.apt-description-details { margin-top: .6rem; }
+.apt-description-details[open] summary { margin-bottom: .65rem; }
+.apt-security-badge { color: var(--warning); border-color: #796d35 !important; background: #2c2918 !important; }
+.apt-held-badge { color: #d8c8ff; border-color: #5f5379 !important; background: #211c2c !important; }
+.apt-warning { margin: 0; color: var(--warning); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.clipboard-fallback { position: fixed; left: -10000px; top: 0; width: 1px; height: 1px; opacity: 0; }
 .credits { display: flex; align-items: center; gap: .9rem; margin-top: 1rem; padding: .8rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .8rem; }
 .credits h2 { margin-bottom: .35rem; font-size: .9rem; color: var(--text); }
 .credits p { margin-bottom: .35rem; }
 .credits img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(234, 185, 74, .45)); }
+.good-news-panel { border-color: #52754e; background: radial-gradient(circle at top right, rgba(168, 239, 106, .12), transparent 38%), linear-gradient(180deg, var(--panel), #121a12); }
+.good-news { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.good-news .news-card { height: 100%; }
+.scroll-top { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 20; width: 48px; height: 48px; padding: 0; border-color: #65c9dc; border-radius: 50%; color: #d9fbff; background: #15333a; box-shadow: 0 0 16px rgba(56, 211, 244, .42); font-size: 1.5rem; cursor: pointer; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .2s ease, transform .2s ease, box-shadow .2s ease; }
+.scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.scroll-top:hover { box-shadow: 0 0 24px rgba(56, 211, 244, .8); }
 
 .diagnostic-head {
   display: flex;
@@ -313,6 +421,8 @@ h1 span { color: var(--accent); font-size: .55em; font-weight: 600; white-space:
 }
 
 .evidence span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: .28rem .5rem;
   border-radius: 999px;
   background: #1d291d;
@@ -372,7 +482,18 @@ dialog::backdrop { background: #000b; }
 .dialog-actions ul { margin: 0; padding-left: 1.1rem; }
 
 @media (max-width: 760px) {
+  .header-lockup { align-items: flex-start; }
+  .app-logo { width: 76px; height: 76px; }
   .hero { flex-direction: column; align-items: flex-start; }
   .hero-actions { align-items: flex-start; min-width: 0; width: 100%; }
   .section-head { flex-direction: column; align-items: flex-start; }
+  .apt-update-card .diagnostic-head,
+  .apt-refresh-card .diagnostic-head { flex-direction: column; }
+  .snapshot-heading { align-items: flex-start; flex-wrap: wrap; }
+  .volume-group-summary { align-items: flex-start; flex-direction: column; }
+  .scroll-top { right: .75rem; bottom: .75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

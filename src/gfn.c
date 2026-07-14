@@ -20,7 +20,7 @@ void gfn_collect(GeForceNowInfo *gfn, const SteamInfo *steam)
         gfn->official_flatpak = access(user_path, F_OK) == 0;
     gfn->installed = gfn->official_flatpak;
     gfn->ubuntu_supported = steam != NULL && steam->ubuntu && strcmp(steam->ubuntu_version, "24.04") >= 0;
-    gfn->controller_available = steam != NULL && steam->controller_detected;
+    gfn->controller_available = steam != NULL && steam->controller_count > 0U;
     session = getenv("XDG_SESSION_TYPE");
     gfn->wayland_session = session != NULL && strcmp(session, "wayland") == 0;
 }

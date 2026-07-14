@@ -11,6 +11,13 @@
 #define STEAM_VERSION_CAPACITY 32U
 #define STEAM_LIBRARY_LIMIT 16U
 #define STEAM_GAME_LIMIT 256U
+#define STEAM_CONTROLLER_LIMIT 16U
+#define STEAM_ICON_MAX_BYTES 65536U
+
+typedef struct SteamControllerInfo {
+    char name[STEAM_NAME_CAPACITY];
+    char kind[24];
+} SteamControllerInfo;
 
 typedef struct SteamLibrary {
     char path[VOLUME_TEXT_CAPACITY];
@@ -26,6 +33,7 @@ typedef struct SteamLibrary {
 typedef struct SteamGame {
     char appid[32];
     char name[VOLUME_TEXT_CAPACITY];
+    char icon_path[VOLUME_TEXT_CAPACITY * 2U];
     uint64_t size_bytes;
     size_t library_index;
     bool directory_present;
@@ -39,6 +47,8 @@ typedef struct SteamInfo {
     bool steam_devices_installed;
     bool controller_detected;
     char controller_name[STEAM_NAME_CAPACITY];
+    SteamControllerInfo controllers[STEAM_CONTROLLER_LIMIT];
+    size_t controller_count;
     SteamLibrary libraries[STEAM_LIBRARY_LIMIT];
     size_t library_count;
     SteamGame games[STEAM_GAME_LIMIT];
@@ -47,5 +57,6 @@ typedef struct SteamInfo {
 } SteamInfo;
 
 int steam_collect(SteamInfo *steam, const VolumeInventory *volumes, char *error, size_t error_size);
+const char *steam_controller_kind(const char *name);
 
 #endif

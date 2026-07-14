@@ -1,37 +1,32 @@
-# Plugins
+# Modules et futur contrat de plugins
 
-Les plugins rendent chaque domaine de diagnostic indépendant. Ils ne contrôlent pas l'interface ; ils fournissent des données et conclusions au noyau.
+Les domaines sont aujourd’hui des modules C17 liés dans un exécutable unique. Ils partagent un rapport normalisé mais il n’existe pas encore d’API binaire ni de chargeur dynamique public. Le mot « plugin » désigne ici la frontière d’architecture visée, pas une capacité déjà livrée.
 
-## Domaines initiaux
+## Responsabilité d’un module
 
-- `storage`, `network`, `updates`, `services`, `hardware`
-- `graphics`, `desktop`, `gaming`, `steam`
-- Puis : `nvidia`, `docker`, `ollama`, `wayland` et autres intégrations spécialisées.
+Un module :
 
-## Responsabilités
+1. collecte des observations locales de façon défensive ;
+2. transforme uniquement les signaux fiables en diagnostics ;
+3. retourne disponibilité, preuves, sévérité et limites ;
+4. fournit une explication pédagogique et une prochaine étape ;
+5. échoue sans empêcher les autres domaines de produire leur résultat.
 
-Un plugin :
+Il ne modifie pas le système, n’appelle pas Internet pendant l’analyse et ne traite pas `unknown` comme `ok`.
 
-1. déclare son identifiant, sa version et ses capacités ;
-2. collecte des observations locales de façon défensive ;
-3. applique ses règles ou transmet des observations au moteur partagé ;
-4. retourne informations, diagnostics, score de catégorie et recommandations ;
-5. fournit une explication pédagogique pour chaque diagnostic qu'il émet.
+## Contrat avant chargement dynamique
 
-Un plugin ne doit pas modifier le système, appeler Internet, ni faire échouer l'analyse entière s'il est indisponible.
+Une vraie API de plugins devra définir :
 
-## Qualité des résultats
+- version ABI et compatibilité du schéma ;
+- capacités et privilèges déclarés ;
+- budget temps, mémoire et taille de sortie ;
+- annulation et délai d’expiration ;
+- provenance des données et identifiants de diagnostics stables ;
+- isolation des erreurs et stratégie de signature/distribution.
 
-Les sévérités sont `ok`, `info`, `warning`, `problem` et `unknown`. `unknown` signifie que le plugin ne peut pas conclure : ce n'est ni une réussite ni un problème.
+L’ajout de complexité n’est justifié que si des modules indépendants doivent être développés ou distribués séparément. Jusque-là, des interfaces C testables et des fichiers sources séparés restent plus simples et plus sûrs.
 
-Les résultats doivent être déterministes pour une même machine et inclure la source de chaque fait (fichier système, commande, API). Les commandes externes sont limitées, avec délai d'expiration et erreurs converties en résultats exploitables.
+## Qualité
 
-Le collecteur `updates` utilise uniquement une simulation locale APT pour son diagnostic. Il distingue un candidat disponible d'un paquet sélectionné pour l'installation immédiate ; un déploiement progressif ou une décision de dépendances ne doit pas être présenté comme une panne. Les descriptions locales indiquent le rôle du paquet, pas le détail du nouveau changelog.
-
-## Ajouter un plugin
-
-- Choisir un identifiant stable, tel que `steam.controller.detected`.
-- Écrire d'abord des échantillons de rapport et tests de règles.
-- Définir les privilèges nécessaires ; préférer les informations accessibles sans élévation.
-- Ajouter le diagnostic, les preuves, recommandations et le contenu **Pourquoi ?**.
-- Vérifier la dégradation gracieuse sur une machine où la technologie n'est pas installée.
+Chaque nouveau domaine commence par des fixtures : état nominal, donnée absente, sortie malformée, limite dépassée et dépendance indisponible. Les commandes externes éventuelles ont des arguments fixes, une sortie bornée et un délai. La procédure générale de développement appartient à [coding-style.md](coding-style.md).

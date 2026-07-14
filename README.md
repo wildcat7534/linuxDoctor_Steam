@@ -1,43 +1,60 @@
 # Linux Doctor
 
-Assistant local pour transformer un PC Ubuntu en machine de jeu fiable et compréhensible. Linux Doctor vérifie les fondations de Steam, Proton, des manettes, de GeForce NOW, du graphisme et du stockage, puis explique simplement *quoi regarder* et **pourquoi cela compte**.
+Linux Doctor aide une personne ordinaire à transformer Ubuntu en machine de jeu fiable. Il vérifie les fondations locales de Steam, Proton, des manettes, de GeForce NOW, du graphisme et du stockage, puis explique quoi regarder et pourquoi cela compte.
 
-## État actuel
+## Version 1.0
 
-La V0.9 fournit un exécutable C17 qui inventorie les volumes montés ou non montés, les bibliothèques Steam, leurs vrais jeux et leurs outils techniques, les manettes reconnues par le noyau, GeForce NOW, une première sélection d'applications utiles, le socle graphique local et les mises à jour candidates APT. Chaque domaine commence par un petit bilan illustré et une explication de son score avant les listes techniques. Les jeux, visibles par défaut, utilisent les icônes 32×32 déjà présentes dans le cache Steam ; Proton, Steam Linux Runtime et les composants similaires sont rangés dans une liste distincte et exclus du plan de migration.
+- bilans courts et illustrés avant les inventaires détaillés ;
+- partitions regroupées par disque, rôles lisibles et détails techniques repliés ;
+- jeux Steam avec leurs icônes locales, séparés de Proton et des runtimes ;
+- manettes reconnues par famille, avec repère Steam/Valve ;
+- graphismes, session Wayland/X11 et fondations Vulkan/OpenGL ;
+- simulation APT locale, rôle des paquets et commande d’actualisation explicite ;
+- budget GeForce NOW sur 100 h : mensuel, annuel payé d’avance, électricité et économie ;
+- base gaming versionnée, mise à jour manuellement puis validée avant installation ;
+- premier Future Lab en lecture seule : CPU, charge, mémoire, réseau et activité disque brute ;
+- historique local optionnel sur 30 analyses compatibles.
 
-Les manettes Steam/Valve, Xbox, PlayStation, Nintendo et 8BitDo reçoivent un repère visuel dédié lorsque leur nom noyau permet de les reconnaître ; les autres restent affichées avec un badge générique. Cette détection confirme la présence du périphérique, pas le fonctionnement de toutes ses touches dans Steam Input. Les scores **Gaming** et **Graphismes** à 95 % explicitent désormais les 5 % réservés aux essais réels qui ne sont pas encore exécutés : lancement d'un jeu, rendu Vulkan/OpenGL et validation du profil de manette.
-
-Le comparatif sur 100 heures additionne désormais le prix mensuel GeForce NOW et l'électricité estimée du PC récepteur. Les tarifs France Performance et Ultime sont datés, reliés à la page officielle NVIDIA et séparés du coût des jeux, de la connexion Internet ou d'éventuelles heures supplémentaires. Le tarif électrique et la durée restent modifiables dans l'interface.
-
-Une première base de connaissances gaming, [data/gaming-knowledge.tsv](data/gaming-knowledge.tsv), reste stockée avec l'application. Elle rapproche les fiches générales et les AppID documentés des jeux réellement installés. Elle ne contacte pas Internet : chaque fiche possède une date et une source, puis peut être enrichie lors d'une future mise à jour du projet.
-
-La catégorie **Mises à jour** simule APT en lecture seule à partir des index déjà présents, distingue les candidats prêts, différés, retenus manuellement ou en déploiement progressif, puis affiche leur rôle depuis les métadonnées locales. Les longues descriptions techniques, souvent en anglais, restent repliées jusqu'à ce que la personne les demande. Ce rôle n'est pas le journal des changements de la version. Le rapport JSON V2 reste local ; le frontend le lit sans logique de diagnostic. Aucune connexion réseau n'est effectuée par les collecteurs. Avec `--history`, les 30 dernières analyses sont conservées localement et comparées.
-
-L'inventaire est strictement en lecture seule : il ne monte pas de volume, ne lance pas `ntfsfix`, ne modifie pas `/etc/fstab` et ne déplace aucun jeu. Ces opérations restent prévues pour des versions ultérieures avec simulation et confirmation explicite.
+Une analyse normale ne contacte pas Internet. Linux Doctor ne monte aucun volume, ne lance pas `ntfsfix`, ne modifie pas `/etc/fstab`, n’installe pas de paquet et ne déplace aucun jeu. Une donnée indisponible reste inconnue.
 
 ## Lancer
 
-Installez un compilateur C compatible C17 et `make`, puis lancez :
+Un compilateur C17 et `make` sont nécessaires.
 
 ```sh
 make run
+./scripts/serve.sh
 ```
 
-Le rapport est écrit dans `frontend/report.json`. Pour le consulter via le frontend, lancez `scripts/serve.sh`, puis ouvrez `http://127.0.0.1:4545`.
+Le rapport est écrit dans `frontend/report.json`, puis l’interface est disponible sur `http://127.0.0.1:4545`. `make run` active explicitement l’historique local ; une seconde analyse compatible permet d’afficher une comparaison.
 
-`make run` active l'historique local. Le premier lancement initialise le suivi ; le second affichera une comparaison dans le tableau de bord.
+Pour compiler et tester sans lancer l’interface :
 
-Depuis la racine du projet, pour actualiser volontairement les index APT avant de régénérer le rapport :
+```sh
+make clean
+make all
+make test
+```
+
+## Actions volontaires
+
+Actualiser les index APT puis régénérer le rapport, sans installer de paquet :
 
 ```sh
 ./scripts/refresh-updates.sh
 ```
 
-`sudo` demande alors, si nécessaire, le mot de passe directement dans le terminal. Linux Doctor ne le lit et ne le conserve jamais. Le script exécute uniquement `apt-get update`, puis régénère atomiquement `frontend/report.json` ; il n'installe aucun paquet. L'interface statique affiche et copie cette commande, mais ne peut pas ouvrir elle-même un dialogue sudo sûr.
+`sudo` demande son secret directement dans le terminal. Linux Doctor ne le lit ni ne le conserve.
 
-Les vérifications sont lancées avec `make test`.
+Vérifier une base gaming publiée sans l’installer, puis l’installer dans les données XDG de l’utilisateur :
+
+```sh
+./scripts/update-knowledge.sh --check
+./scripts/update-knowledge.sh
+```
+
+Cette seconde action n’utilise pas `sudo`. Le téléchargement est borné et la copie exacte est validée avant un remplacement atomique ; la version 1.0 ne possède toutefois pas encore de signature cryptographique.
 
 ## Documentation
 
-Les décisions de produit et l'architecture sont dans [docs](docs/). La suite prioritaire est d'ajouter les collecteurs et plugins des autres catégories définies dans la feuille de route.
+L’index [docs/README.md](docs/README.md) indique le document canonique de chaque sujet. Les règles de la base gaming sont dans [data/README.md](data/README.md).

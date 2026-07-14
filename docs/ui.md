@@ -1,62 +1,55 @@
 # Interface
 
-## Objectif
+L’interface aide une personne non spécialiste à préparer Ubuntu pour jouer. Elle montre d’abord un bilan illustré, puis les détails vérifiables à la demande ; elle ne ressemble ni à une sortie de terminal ni à une liste infinie.
 
-L'interface doit aider d'abord une personne non spécialiste à préparer Ubuntu pour jouer, sans ressembler à une sortie de terminal. L'inspiration est un tableau de bord moderne, avec une densité d'information maîtrisée, une identité Linux chaleureuse et des bilans illustrés avant tout inventaire long.
+## Hiérarchie
 
-## Écran principal
+1. **Bilan général** : date, score expliqué, problèmes et avertissements.
+2. **Petites victoires** : fondations déjà prêtes pour jouer.
+3. **Catégories** : Stockage, Gaming, Graphismes, Mises à jour, Applications et Future Lab.
+4. **Petit bilan de la catégorie** : quatre faits courts avec icônes et portée du score.
+5. **Détails** : inventaires, preuves et recommandations repliables.
 
-- Un score **System Health** accompagné de son interprétation et de ses limites.
-- Un résumé d'accueil : date de dernière analyse, éléments prioritaires et évolution depuis la précédente analyse.
-- Des cartes par catégorie : Operating System, Hardware, Graphics, Gaming, AI, Network, Storage, Security, Services et Updates.
-- Chaque carte montre un état (`OK`, `Warning`, `Problem` ou `Unknown`), la priorité et un résumé actionnable.
-- Les filtres permettent d'afficher les problèmes, avertissements ou toutes les informations.
-- Une section compacte « Ce qui est déjà prêt pour jouer » apparaît juste après l'en-tête et met en valeur les vérifications positives avant les listes longues.
+Une valeur inconnue apparaît comme telle, jamais comme 0 %. La couleur est toujours accompagnée d’une icône et d’un texte.
 
-## Historique et changement utile
+## Interactions communes
 
-L'historique ne doit pas être une courbe décorative. Il répond à « Qu'est-ce qui a changé ? » :
+- clavier, contraste, focus visible et mise en page mobile ;
+- bouton **Pourquoi ?** avec observé, importance, impact et prochaine étape ;
+- liens externes dans un nouvel onglet ;
+- bouton « ↑ Haut » visible après le début du défilement ;
+- animations non clignotantes et désactivées avec `prefers-reduced-motion` ;
+- commandes visibles, sélectionnables et copiées via l’API moderne ou un secours local.
 
-- score actuel, précédent et tendance sur une période choisie ;
-- diagnostics nouveaux, résolus ou dont la sévérité a changé ;
-- évolution de mesures pertinentes, par exemple l'occupation de la partition racine ;
-- explication courte : « Depuis la dernière analyse, la partition système est passée de 85 % à 97 %. »
+Le navigateur ne lance aucune commande. Il affiche la procédure à exécuter volontairement dans un terminal.
 
-Une hausse ou baisse de score n'est jamais affichée sans les diagnostics qui l'expliquent. Les périodes sans historique affichent un état honnête, tel que « Première analyse : le suivi commencera après celle-ci ». L'historique est désactivé par défaut et son état est visible dans l'interface.
+## Stockage
 
-## Le bouton « Pourquoi ? »
+Les partitions sont regroupées par disque physique. Une première carte montre capacité connue, proportion relative, rôle et accessibilité. L’ouverture du disque révèle chaque partition ; UUID, transport et périphérique restent repliés.
 
-Toute alerte ou recommandation significative propose un bouton **Pourquoi ?**. Il ouvre un panneau concis contenant :
+La longueur d’un segment représente une proportion, avec une largeur minimale pour les partitions minuscules. L’espace non partitionné et l’occupation d’un volume non monté restent inconnus. Un contenu Windows confirmé est protégé et expliqué.
 
-1. **Ce que nous avons observé** — le fait mesuré, sans jargon inutile.
-2. **Pourquoi c'est important** — mécanisme ou conséquence réelle.
-3. **Ce qui peut arriver** — impact probable, formulé sans catastrophisme.
-4. **Que faire ensuite** — une ou plusieurs actions, avec leur niveau de risque.
+## Gaming
 
-Exemple : pour une partition système à 97 %, expliquer que l'espace libre facilite les opérations d'écriture, les mises à jour et les installations ; ne pas prétendre que le SSD est forcément en danger.
+- Le contour animé indique clairement que le comparatif porte sur **100 h de jeu**.
+- Les profils GeForce NOW, PC moyen et PC haut de gamme ont une couleur et une icône distinctes.
+- GeForce NOW sépare paiement mensuel, paiement annuel d’avance, équivalent mensuel, électricité et économie annuelle.
+- Les jeux Steam et leurs icônes locales sont visibles par défaut ; Proton, runtimes et outils sont dans un volet distinct.
+- Les manettes reçoivent un repère de famille ; le logo Steam local apparaît pour Valve/Steam.
+- La base gaming montre version, date, origine et commande manuelle de mise à jour avant ses fiches détaillées.
 
-## Principes d'interaction
+Les estimations de puissance restent des hypothèses modifiables, jamais des mesures de la prise. Les tarifs sont datés et reliés à leur [source](data-sources.md).
 
-- La couleur ne porte jamais seule le sens : icône, texte et sévérité l'accompagnent.
-- Les données techniques sont accessibles par divulgation progressive, près de la conclusion qu'elles justifient.
-- Les actions potentiellement risquées précisent leurs effets et demandent confirmation.
-- Les états d'absence de données expliquent ce qui manque et, si possible, comment l'obtenir.
-- L'interface reste utilisable au clavier, lisible avec un contraste suffisant et adaptable aux petites fenêtres.
-- La navigation par catégories évite une page interminable ; l'accueil reste une synthèse, pas un inventaire.
-- Chaque catégorie commence par « Le petit bilan » et quatre faits courts accompagnés d'icônes. L'explication du score apparaît immédiatement dans ce bilan ; une valeur inconnue est représentée par un tiret et jamais par un faux 0 %.
-- Les jeux Steam et leurs icônes sont ouverts par défaut parce qu'ils constituent la partie la plus visuelle du domaine Gaming ; la personne peut toujours replier la liste.
-- Les disques physiques conservent une synthèse visible, tandis que partitions, montages et preuves techniques sont repliés par défaut. Un raccourci vers un disque ouvre automatiquement son détail.
-- Le comparatif énergétique apparaît avant les longues listes Steam. Un courant lumineux parcourt continuellement le contour de « 100 h de jeu » sans variation de luminosité globale ni clignotement. L'animation est désactivée lorsque le système demande une réduction des mouvements.
-- Le coût GeForce NOW distingue l'abonnement mensuel, l'électricité estimée, leur total et le coût horaire lorsque la durée est utilisée. Performance et Ultime restent séparés ; la date tarifaire, la source NVIDIA et les exclusions sont visibles.
-- Les jeux sont visibles par défaut. Proton, Steam Linux Runtime et les autres outils sont regroupés dans un volet technique séparé et replié.
-- Le bouton « ↑ Haut » apparaît après un défilement plus court, s'aligne sur le bord droit du contenu et conserve un contour de focus visible. Les liens externes, dont GitHub, s'ouvrent dans un nouvel onglet.
-- Les manettes détectées reçoivent un badge de famille et, pour Steam/Valve, le logo Steam local. Un badge générique évite de masquer un modèle non reconnu.
-- Une jaquette absente n'est jamais téléchargée automatiquement : l'interface utilise la petite icône locale du cache Steam ou un pictogramme de secours.
+## Mises à jour APT
 
-## Mises à jour APT et authentification
+La page commence par un bilan des candidats prêts, phasés, différés, retenus ou inconnus. La liste complète reste repliée. Pour chaque paquet, « À quoi sert ce paquet ? » précède sa description technique, souvent anglaise, elle-même repliée.
 
-La page **Mises à jour** présente chaque candidat avec les versions installée et proposée, l'architecture, le dépôt, le paquet source et une réponse visible à « À quoi sert ce paquet ? ». Les états « prêt », « déploiement progressif », « retenu », « différé » et « inconnu » restent distincts. La description APT peut être en anglais : elle est donc repliée derrière « Afficher la description technique » et précise qu'elle décrit le rôle du paquet, pas les changements exacts de la version.
+`./scripts/refresh-updates.sh` est copié depuis l’interface puis exécuté dans un terminal. `sudo` y demande directement le mot de passe ; Linux Doctor ne le lit, ne le transmet et ne le conserve jamais. Cette action actualise les index, sans installer de paquet.
 
-Le frontend statique ne contient jamais de champ de mot de passe. Il peut copier `./scripts/refresh-updates.sh`, mais la personne lance cette commande depuis la racine du projet dans un terminal afin que `sudo` possède seul la saisie du secret. Cette actualisation modifie les index APT, pas les paquets installés ; le rapport précédent reste consultable en cas de refus ou d'échec.
+## Future Lab
 
-La copie emploie d'abord l'API moderne du presse-papiers puis une sélection locale de secours pour les navigateurs ou contextes qui la refusent. En dernier recours, la commande reste visible et sélectionnable.
+La première vue doit résumer CPU, charge, mémoire, réseau et disques avec des unités explicites. Les compteurs cumulés portent un libellé « depuis le démarrage » et ne sont pas dessinés comme des débits. Les longues listes d’interfaces et de périphériques restent repliées.
+
+## Historique
+
+L’historique 1.0 compare uniquement le score précédent et le remplissage de la partition racine. Il possède un état dédié pour la première analyse ou un score incomplet ; l’identification de diagnostics apparus ou résolus reste une évolution future. Voir le [périmètre réellement conservé](history.md).

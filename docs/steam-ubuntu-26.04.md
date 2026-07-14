@@ -15,7 +15,7 @@ Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour êt
 | Manettes et Steam Input | Manette Steam/Valve, Xbox, PlayStation, Nintendo, 8BitDo ou générique vue par le noyau ; règles `steam-devices` présentes | Le nom permet seulement une classification visuelle. Le test d'entrée Steam et le profil par jeu restent nécessaires. |
 | Droits `hidraw` / udev | Règles du paquet `steam-devices` | Certaines manettes tierces demandent des règles spécifiques. |
 | Bibliothèques 32 bits | Architecture `i386` activée | Les bibliothèques graphiques i386 doivent correspondre au pilote installé. |
-| Vulkan, pilotes et Wayland/Xwayland | La V0.6 relève le pilote noyau, la session et la présence des chargeurs/manifests locaux | Aucun rendu n'est encore lancé ; une régression peut dépendre d'une version précise de Mesa, NVIDIA, Proton ou du bureau. |
+| Vulkan, pilotes et Wayland/Xwayland | Linux Doctor relève le pilote noyau, la session et la présence des chargeurs/manifests locaux | Aucun rendu n'est encore lancé ; une régression peut dépendre d'une version précise de Mesa, NVIDIA, Proton ou du bureau. |
 | Proton par jeu | Aucun verdict global fiable | Audio, vidéo, réseau, anti-triche et périphériques dépendent du jeu et de la version de Proton. |
 | Client Steam / runtime | À ajouter : installation et journaux | Fenêtre noire, `steamwebhelper` et mises à jour du runtime sont des symptômes distincts. |
 | Flatpak, Snap ou paquet Debian | À ajouter : provenance d'installation | Les permissions et les runtimes diffèrent ; ils ne doivent pas être confondus. |
@@ -36,11 +36,11 @@ Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour êt
 
 Une incompatibilité anti-triche, un jeu qui ne démarre pas ou une régression Proton doit rester un diagnostic associé à un jeu et une version de Proton. Linux Doctor peut préparer les informations utiles et pointer vers le suivi concerné, mais ne doit pas affirmer qu'un PC est globalement « compatible avec tous les jeux Steam ».
 
-## Base locale 0.9
+## Base locale et mise à jour 1.0
 
 Les fiches de compatibilité sont conservées dans `data/gaming-knowledge.tsv`. Une fiche `game` utilise l'AppID Steam comme cible ; elle n'apparaît que si ce jeu est installé. Les fiches générales `steam`, `controller`, `gfn` et `ubuntu` suivent la même règle de pertinence locale.
 
-Chaque ajout doit préciser une source HTTPS et une date de révision. Une fiche ancienne peut guider une investigation, mais ne doit pas être présentée comme la preuve qu'un problème existe encore avec la version courante du jeu, de Proton ou du pilote.
+Chaque ajout doit préciser une source HTTPS et une date de révision. Une copie plus récente peut être vérifiée puis installée volontairement dans les données XDG avec `./scripts/update-knowledge.sh`. L’analyse ne contacte jamais Internet et revient à la copie intégrée si la copie utilisateur est invalide. Une fiche ancienne peut guider une investigation, mais ne prouve pas que le problème existe encore avec la version courante du jeu, de Proton ou du pilote. Voir [data-sources.md](data-sources.md).
 
 ## Jeux et outils Steam
 

@@ -1,106 +1,98 @@
 # Architecture
 
-## Vue d'ensemble
-
-Linux Doctor sépare strictement le diagnostic de l'interface : un exécutable C17 collecte et analyse la machine, puis produit un rapport JSON versionné. Le frontend lit ce fichier sans connaître le système ni les règles de diagnostic.
+Linux Doctor sépare collecte, diagnostic et présentation. Le moteur C17 produit un rapport JSON versionné ; l’interface statique le rend sans accès direct au système et sans inventer de diagnostic.
 
 ```text
-Système Linux → collecteurs C → règles de diagnostic → rapport JSON
-                                                       ↓
-                                          interface HTML/CSS/JS
-                                                       ↓
-                                                export HTML / PDF / JSON
+sources Linux locales → collecteurs C → règles → rapport JSON
+                                                   ↓
+                                      HTML / CSS / JavaScript
+
+action réseau volontaire → téléchargement borné → validation C → données XDG
 ```
-
-Le backend est un outil CLI, par exemple `linux-doctor --output report.json`. Le frontend peut être servi par n'importe quel serveur statique local ; aucune ressource distante n'est requise.
-
-## Schéma V2 — inventaires lecture seule
-
-Le schéma V2 ajoute des blocs indépendants des diagnostics :
-
-- `storage_inventory.volumes` : partitions détectées, y compris celles qui ne sont pas montées ;
-- `steam_inventory.libraries`, `steam_inventory.games` et `steam_inventory.controllers` : bibliothèques Steam, manifests classés en jeux ou outils techniques, et manettes reconnues par leur nom noyau.
-- `graphics_inventory.devices` : cartes DRM, identifiants PCI et pilotes noyau exposés par sysfs ;
-- `graphics_inventory.session`, `vulkan` et `opengl` : contexte de session et présence des chargeurs locaux, sans test de rendu.
-- `updates_inventory` : fraîcheur des index APT, candidats, versions, origine, rôle local, paquets retenus et état `ready`, `phased`, `deferred` ou `unknown`.
-- `gaming_knowledge` : état de la base locale, nombre de fiches et seules fiches pertinentes pour les composants ou AppID détectés ;
-- `gfn_inventory` : présence locale de l'application GeForce NOW et contexte utile, sans vérification réseau.
-
-Le champ racine `generated_at` contient l'heure UTC de génération au format ISO 8601. Le tableau `good_news` expose uniquement des conclusions positives explicitement étayées ; le frontend ne les déduit pas lui-même.
-
-Les collecteurs ne modifient aucun volume. Une partition non montée, une bibliothèque non inscriptible ou un manifeste incomplet sont exposés comme des faits ; le diagnostic NTFS, la lecture de `fstab` et toute réparation sont différés à la V0.3 ou au-delà.
-
-Un disque reçoit le marqueur `windows_protected` seulement lorsqu'un volume monté contient réellement `Windows/System32`. Les types de partition Microsoft, une partition de récupération ou une simple partition NTFS restent des indices insuffisants : ils ne déclenchent ni avertissement dual boot ni exclusion automatique. Lorsqu'il est confirmé, le disque est exclu des destinations automatiques de migration et l'interface demande de ne pas l'effacer ou le reformater.
-
-Le plan de migration V0.4 est également lecture seule : le backend choisit une destination déjà montée et inscriptible, puis une sélection de jeux permettant d'atteindre l'objectif d'espace libre. Le rapport expose cette simulation ; l'interface ne déplace aucun fichier et renvoie vers le gestionnaire de stockage Steam pour toute action réelle.
-
-Le socle graphique V0.6 reste lui aussi factuel. La présence de `libvulkan.so.1`, de fichiers manifestes ICD candidats ou de `libGL.so.1` ne prouve ni la validité complète du manifeste, ni qu'un contexte de rendu peut être créé, ni les performances, ni la compatibilité d'un jeu. Ces limites apparaissent dans chaque diagnostic concerné.
-
-L'inventaire APT V0.6 exécute deux simulations `apt-get` locales avec des arguments fixes : une résolution complète en lecture seule inventorie les candidats, y compris les déploiements progressifs et changements de dépendances ; une simulation `upgrade` sans suppression reflète ce qu'APT sélectionnerait actuellement. `apt-mark showhold` empêche de confondre un paquet retenu avec un simple phasage, puis `apt-cache` enrichit chaque candidat avec les métadonnées déjà téléchargées. Un cache n'est déclaré disponible que si un véritable fichier d'index existe. Les processus ont une locale fixe, une sortie bornée, un groupe de processus isolé et un délai d'expiration ; aucun shell, sudo, téléchargement ou verrou d'écriture n'est utilisé pendant la collecte. Une sortie inconnue ou incomplète produit `unknown`, jamais « aucune mise à jour ». Une description APT explique le rôle du paquet, mais pas nécessairement ce que la nouvelle version corrige. Une provenance `*-security` est signalée factuellement sans inventer de criticité ou de CVE.
-
-En V0.7, le collecteur Steam cherche pour chaque AppID une petite icône JPEG déjà mise en cache par le client Steam. Seuls les fichiers réguliers au nom attendu et d'au plus 64 Kio sont retenus. Le rapport encode leur contenu en URI `data:` : il ne publie ni chemin personnel, ni requête vers un CDN. Une icône générique est utilisée lorsque Steam ne possède pas d'image locale.
-
-En V0.8, l'inventaire des manettes expose un nom et une famille visuelle (`steam`, `xbox`, `playstation`, `nintendo`, `8bitdo` ou `generic`). La classification repose uniquement sur le nom déclaré au noyau, déduplique les interfaces d'un même Steam Controller et ne réalise aucun test d'entrée. Le frontend choisit les badges et icônes à partir de cette famille, sans inventer de compatibilité Steam Input.
-
-En V0.9, chaque manifeste Steam reçoit un `kind` (`game` ou `tool`). Les AppID connus des runtimes et les noms explicites comme Proton, Steam Linux Runtime, Steamworks Common Redistributables ou Steam Input Configs sont classés comme outils. Les bibliothèques exposent séparément `game_count`, `game_bytes`, `tool_count` et `tool_bytes`. Un outil n'est jamais retenu par le planificateur de migration ni rapproché d'une fiche de compatibilité de jeu. La classification reste volontairement prudente : un composant inconnu peut encore apparaître comme jeu jusqu'à l'ajout d'une règle testée.
-
-Les tarifs GeForce NOW de la V0.9 sont des données éditoriales datées du frontend, pas une collecte système ni un appel réseau au chargement. Ils sont accompagnés d'un lien vers la grille NVIDIA et combinés au coût électrique uniquement pour expliquer le budget de la durée saisie. Les jeux, l'accès Internet et les achats d'heures au-delà de l'enveloppe ne sont pas inclus.
-
-La base `data/gaming-knowledge.tsv` est une ressource locale versionnée. Le module C valide ses champs bornés et rapproche les cibles `game`, `steam`, `controller`, `gfn` ou `ubuntu` des observations locales. Le rapport n'exporte que les fiches pertinentes. Cette base apporte du contexte pédagogique ; elle ne remplace ni un test réel du jeu, ni la lecture d'un ticket récent, ni une vérification humaine de la date et de la source.
-
-L'actualisation des index est une action séparée et explicite : `scripts/refresh-updates.sh` lance la commande fixe `/usr/bin/sudo -- /usr/bin/apt-get update` dans un terminal, puis régénère le rapport avec un fichier temporaire unique et un renommage. Le mot de passe reste lu par `sudo`. Le frontend statique ne reçoit aucun secret et n'exécute aucune commande privilégiée.
-
-En V0.6, `system_health.scope` indique les catégories qui contribuent réellement au score global : `storage` et `graphics`. Le score retient la conclusion la plus faible de ces deux catégories afin qu'un avertissement graphique ne soit pas masqué par un stockage sain. Les autres catégories conservent leur score propre jusqu'à la définition d'une pondération globale explicable.
-
-Depuis la V0.8, chaque catégorie exporte aussi `score_explanation`. Ce texte explique ce qui est mesuré et ce qui manque encore au score. Ainsi, 95 % en graphismes signifie que les pilotes, chargeurs et contexte local ont été détectés, avec 5 % réservés à un véritable rendu et à la validation des versions ; 95 % en gaming réserve de même les essais réels de lancement, Proton et Steam Input. Une catégorie inconnue reste affichée sans valeur numérique.
-
-`system_health.complete` passe à `false` dès qu'une catégorie du périmètre est `unknown`, même si une autre expose parallèlement un problème confirmé. Le problème reste visible, mais l'interface masque alors la valeur numérique partielle et l'historique suspend la comparaison.
 
 ## Composants
 
 | Composant | Responsabilité |
 | --- | --- |
-| Noyau C | Orchestration, score global, production de rapport et exports. |
-| Plugins | Collecte d'un domaine, évaluation des règles et production de résultats normalisés. |
-| Moteur de règles | Transforme des observations factuelles en diagnostics, sévérités et recommandations. |
-| Rapport JSON | Contrat stable entre backend, interface et exports. |
-| Interface web | Lit le fichier JSON, présente les filtres, détails techniques et panneaux pédagogiques. Elle ne diagnostique pas. |
-| Historique local | Snapshots normalisés et résumés de changements, conservés uniquement sur la machine. |
+| CLI C17 | orchestration, options, erreurs et écriture du rapport |
+| Collecteurs | observations locales bornées par domaine |
+| Règles | sévérités, scores, preuves, explications et recommandations |
+| Rapport JSON V2 | contrat stable entre moteur, interface et tests |
+| Interface web | bilans, navigation et divulgation progressive |
+| Historique | comparaison de snapshots compatibles dans l’état XDG |
+| Base gaming | contexte éditorial versionné, rapproché des observations locales |
+
+Les domaines sont actuellement compilés dans un seul exécutable. [plugins.md](plugins.md) décrit le contrat souhaité pour les isoler ; il n’existe pas encore de chargement dynamique public.
+
+## Rapport JSON V2
+
+La 1.0 ajoute des blocs racine optionnels à V2 sans modifier le sens des champs existants. Cette extension additive reste lisible par un consommateur qui ignore les clés inconnues ; toute rupture sémantique future exigera une nouvelle version de schéma.
+
+Les blocs principaux sont indépendants afin qu’une source indisponible ne casse pas toute l’analyse :
+
+- `application`, `generated_at` et `schema_version` identifient le rapport ;
+- `system_health`, `summary`, `categories` et `good_news` portent les conclusions ;
+- `storage_inventory` décrit les volumes détectés ;
+- `steam_inventory` sépare bibliothèques, jeux, outils et manettes ;
+- `graphics_inventory` décrit périphériques, pilote, session et chargeurs locaux ;
+- `updates_inventory` expose les candidats APT et l’état de leur sélection ;
+- `apps_inventory` et `gfn_inventory` décrivent les outils gaming visibles localement ;
+- `gaming_knowledge` expose uniquement les fiches pertinentes et leur provenance ;
+- `future_lab` contient les instantanés bruts CPU, charge, mémoire, réseau et disque ;
+- `history` compare uniquement des analyses compatibles.
+
+Une donnée manquante produit `unknown`, une valeur nulle explicitement documentée ou un bloc indisponible. Elle ne devient jamais une réussite par défaut.
 
 ## Contrat de diagnostic
 
-Chaque diagnostic doit contenir au minimum :
+Chaque diagnostic possède un identifiant stable, une sévérité (`ok`, `info`, `warning`, `problem`, `unknown`), un résumé, des preuves, des recommandations et une explication. Le fait brut reste distinct du texte pédagogique.
 
 ```json
 {
   "id": "storage.root.nearly_full",
   "severity": "warning",
   "title": "Partition système presque pleine",
-  "summary": "Il reste 6 Go sur la partition racine.",
-  "evidence": [{ "label": "Utilisation", "value": "97 %" }],
-  "recommendations": [{ "label": "Libérer de l'espace", "priority": "high" }],
+  "evidence": [{"label": "Utilisation", "value": "97 %"}],
   "explanation": {
-    "why": "Les SSD et les mises à jour ont besoin d'espace libre pour fonctionner confortablement.",
-    "impact": "Les installations peuvent échouer et le système devenir plus difficile à maintenir.",
-    "learn_more": "storage.free-space"
+    "observed": "La partition racine utilise 97 % de sa capacité.",
+    "why": "Les mises à jour et installations ont besoin d’espace libre.",
+    "impact": "Une opération peut échouer faute d’espace.",
+    "next_step": "Identifier d’abord les données volumineuses."
   }
 }
 ```
 
-`id` est stable et sert aux liens, tests, traductions et explications. Les valeurs brutes restent distinctes des textes affichés. Un diagnostic inconnu ou incomplet doit l'indiquer au lieu d'inférer un état sain.
+Le frontend peut filtrer et reformuler la mise en page, mais il ne change ni la sévérité ni la conclusion.
 
-## Historique local
+## Collecte locale
 
-L'historique est activé explicitement. Le backend compare l'analyse courante à la dernière analyse compatible et ajoute un résumé de différences au rapport : score, sévérités, valeurs suivies et diagnostics apparus ou résolus. Le frontend affiche ces données, mais ne calcule pas les diagnostics lui-même.
+- Le stockage privilégie les sources structurées et ne mesure l’occupation que d’un volume monté.
+- Steam lit des manifestes bornés et des icônes locales régulières d’au plus 64 Kio ; aucune jaquette n’est téléchargée.
+- La classification `game`/`tool` est prudente. Un outil n’entre pas dans une simulation de migration de jeux.
+- Les familles de manettes proviennent du nom noyau ; elles ne prouvent pas le fonctionnement de Steam Input.
+- Graphismes vérifie les faits locaux disponibles, pas un véritable rendu ni les performances d’un jeu.
+- APT exécute des simulations à arguments fixes, sans shell, `sudo`, verrou d’écriture ou réseau. Sorties, durée et groupe de processus sont bornés.
+- Future Lab lit `/proc` avec des tableaux de taille fixe. Les compteurs CPU, réseau et disque sont cumulés depuis le démarrage ; deux instantanés sont nécessaires pour un taux.
 
-Les snapshots sont conservés sous le répertoire d'état XDG (`$XDG_STATE_HOME/linux-doctor`, ou `~/.local/state/linux-doctor`). Ils ne contiennent ni chemins personnels, ni secrets, ni inventaire détaillé inutile. La première version conserve les 30 analyses récentes. Une agrégation mensuelle pourra compléter cette rétention lorsqu'elle apportera une vraie valeur. La suppression complète de l'historique doit être possible sans privilège.
+Le score global n’inclut que les catégories dont la pondération est définie et explicable. Si l’une d’elles est inconnue, `system_health.complete` devient faux et la valeur partielle est masquée.
 
-Un historique est utile seulement si la comparaison est fiable : une modification de schéma, de machine ou de règle doit être signalée comme telle, jamais présentée comme une régression système.
+## Données connectées
 
-## Sécurité et confidentialité
+Une analyse normale n’accède jamais au réseau. `scripts/update-knowledge.sh` est une action manuelle distincte : il télécharge un fichier HTTPS borné, puis le moteur valide le schéma avant installation atomique dans `$XDG_DATA_HOME/linux-doctor`. Une copie utilisateur invalide ne doit jamais remplacer la base intégrée.
 
-- Écouter seulement sur la boucle locale par défaut.
-- Ne jamais demander, transmettre ou stocker un mot de passe sudo dans le frontend ou le rapport.
-- Ne jamais exécuter une action corrective sans demande explicite et confirmation claire.
-- Masquer ou exclure des exports les secrets, chemins sensibles et identifiants réseau lorsque nécessaire.
-- Versionner le schéma JSON et conserver une compatibilité de lecture raisonnable.
+HTTPS protège le transport mais ne signe pas le contenu. La mise à jour automatique reste interdite jusqu’à l’ajout d’une signature, d’une expiration et d’un retour arrière. La politique complète est dans [data-sources.md](data-sources.md).
+
+L’actualisation APT est également séparée : `scripts/refresh-updates.sh` laisse `/usr/bin/sudo` demander le secret dans le terminal, exécute uniquement `apt-get update`, puis régénère le rapport. Le frontend ne reçoit jamais le mot de passe.
+
+## Historique
+
+`--history` constitue l’activation explicite. Les snapshots compatibles sont conservés sous `$XDG_STATE_HOME/linux-doctor` ou `~/.local/state/linux-doctor`, avec une rétention bornée. Les chemins personnels, secrets et inventaires détaillés inutiles en sont exclus. Voir [history.md](history.md).
+
+## Sécurité et évolution
+
+- aucune réparation, écriture de `/etc/fstab` ou migration réelle implicite ;
+- aucune exécution de commande système depuis le navigateur ;
+- serveur de développement limité à la boucle locale ;
+- chaînes, fichiers, tableaux, sorties et délais bornés ;
+- données distantes datées et sourcées, rapport toujours utilisable hors ligne ;
+- changement du schéma accompagné de fixtures, tests et stratégie de compatibilité.

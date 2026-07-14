@@ -1,50 +1,31 @@
 # Historique local
 
-## But
+## Périmètre livré en 1.0
 
-L'historique transforme Linux Doctor d'un diagnostic ponctuel en suivi de santé, sans devenir un outil de surveillance intrusif. Il doit montrer une évolution compréhensible et actionnable : problèmes apparus, problèmes résolus et valeurs réellement importantes.
+L’historique est un suivi volontaire et local, pas une collecte continue. Il n’est activé que lorsque Linux Doctor est lancé avec `--history` ; `make run` utilise explicitement cette option.
 
-## Principes produit
+Chaque analyse compatible ajoute une ligne privée dans :
 
-- **Opt-in** : aucune analyse n'est conservée tant que la personne ne l'a pas activé.
-- **Local et effaçable** : les fichiers restent dans le répertoire d'état XDG et peuvent être supprimés depuis l'interface ou le CLI.
-- **Explicable** : un changement de score est toujours relié aux diagnostics concernés.
-- **Sobre** : pas de collecte continue ; une analyse manuelle ou planifiée crée au plus un snapshot.
-- **Honnête** : une comparaison incompatible est signalée, jamais interprétée comme une dégradation.
-
-## Données conservées
-
-Un snapshot contient un horodatage, la version du schéma, le score, les identifiants et sévérités de diagnostics, et les mesures explicitement déclarées suivables (par exemple le pourcentage d'utilisation de `/`). Les chemins personnels, noms de réseaux, adresses, clés et sorties de commandes brutes sont exclus.
-
-Le rapport courant peut exposer un bloc `history` qui contient uniquement les comparaisons utiles au frontend : précédent score, tendance, diagnostics apparus/résolus et séries de mesures compactes.
-
-```json
-{
-  "history": {
-    "enabled": true,
-    "previous_score": 93,
-    "score_delta": 3,
-    "changes": [{
-      "id": "storage.root.capacity",
-      "kind": "worsened",
-      "previous": "85 %",
-      "current": "97 %"
-    }]
-  }
-}
+```text
+$XDG_STATE_HOME/linux-doctor/snapshots-v2.csv
 ```
 
-## Rétention initiale
+Si `XDG_STATE_HOME` est absent, le chemin devient `~/.local/state/linux-doctor/snapshots-v2.csv`. Chaque ligne contient uniquement :
 
-La première implémentation conserve les 30 derniers snapshots détaillés et remplace le plus ancien lorsque cette limite est atteinte. Une future évolution pourra remplacer les données quotidiennes plus anciennes par un résumé mensuel : score min/max, derniers états des diagnostics et quelques mesures agrégées.
+- l’horodatage Unix de l’analyse ;
+- le score global courant ;
+- le pourcentage utilisé de la partition racine.
 
-La V0.6 change le périmètre du score global pour inclure le stockage et le socle graphique. Elle démarre donc une série `snapshots-v2.csv` distincte : l'ancien fichier `snapshots.csv` reste localement intact, mais n'est pas comparé au nouveau score.
+Les chemins personnels, noms de réseaux, diagnostics détaillés et sorties de commandes ne sont pas enregistrés. Le fichier est créé avec les permissions `0600` et conserve au plus les 30 dernières lignes.
 
-Si le score est incomplet, par exemple lors d'une analyse hors session Wayland/X11, aucun snapshot n'est ajouté et le rapport marque la comparaison incompatible. Cela évite de transformer une absence de contexte en fausse chute de santé.
+## Comparaison affichée
 
-## Cas à traiter avant implémentation
+À partir de la deuxième analyse compatible, le rapport expose le score précédent, son écart et l’évolution du remplissage de `/`. L’interface ne prétend pas encore identifier les problèmes apparus ou résolus : ce rapprochement demanderait de conserver des identifiants et états que la 1.0 n’enregistre pas.
 
-- Première analyse : aucune comparaison n'est affichée.
-- Nouvelle version du schéma ou d'une règle : comparaison marquée incompatible si nécessaire.
-- Changement de machine ou de partition : pas de comparaison automatique.
-- Horloge système incohérente : trier de manière sûre et avertir dans les métadonnées, sans fausser la tendance.
+Si le score courant est incomplet, par exemple hors d’une session graphique reconnue, aucune ligne n’est ajoutée et la comparaison est marquée incompatible. Une première analyse signale simplement qu’aucun point précédent n’existe.
+
+## Effacement et limites
+
+La 1.0 ne possède pas encore de bouton ni de commande Linux Doctor pour effacer l’historique. La personne peut supprimer manuellement `snapshots-v2.csv` depuis son gestionnaire de fichiers ou son terminal. L’ancien `snapshots.csv`, s’il existe, n’est ni lu ni modifié.
+
+Linux Doctor ne détecte pas encore un changement de machine, de partition racine ou d’horloge incohérente. Ces garde-fous, l’effacement intégré et une comparaison par diagnostic sont des évolutions futures ; ils ne doivent pas être présentés comme disponibles.

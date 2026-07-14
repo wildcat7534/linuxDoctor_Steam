@@ -29,9 +29,12 @@ const dialogActionsList = document.querySelector('#dialog-actions-list');
 const electricLink = document.querySelector('#electric-link');
 const scrollTopButton = document.querySelector('#scroll-top');
 const APT_REFRESH_COMMAND = './scripts/refresh-updates.sh';
+const KNOWLEDGE_UPDATE_COMMAND = './scripts/update-knowledge.sh';
 const APT_UPDATE_STATES = new Set(['ready', 'phased', 'deferred', 'unknown']);
-const CATEGORY_ICONS = { storage: '💾', gaming: '🎮', graphics: '⚡', updates: '📦', apps: '🛠️' };
+const CATEGORY_ICONS = { storage: '💾', gaming: '🎮', graphics: '⚡', future_lab: '🧪', updates: '📦', apps: '🛠️' };
 const KNOWLEDGE_ICONS = { game: '🕹️', steam: '♨️', controller: '🎮', gfn: '☁️', ubuntu: '🐧' };
+const INTEGER_FORMATTER = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const LOAD_FORMATTER = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const CONTROLLER_BRANDS = {
   steam: { label: 'Steam / Valve', mark: 'STEAM' },
   xbox: { label: 'Xbox', mark: 'X' },
@@ -73,6 +76,18 @@ function formatBytes(bytes) {
   return `${value >= 10 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
 }
 
+function formatInteger(value) {
+  return Number.isFinite(value) ? INTEGER_FORMATTER.format(value) : 'Indisponible';
+}
+
+function formatKib(value) {
+  return Number.isFinite(value) ? formatBytes(value * 1024) : 'Indisponible';
+}
+
+function futureLabAvailable(section) {
+  return section?.state === 'available';
+}
+
 function evidenceText(item) {
   const value = item.value || formatBytes(item.bytes);
   return value || item.detail
@@ -83,6 +98,120 @@ function evidenceText(item) {
 function physicalDiskKey(volume) {
   if (volume.parent_path) return volume.parent_path;
   return volume.path.replace(/p?\d+$/, '');
+}
+
+function volumeSize(volume) {
+  return Number.isFinite(volume.size_bytes) && volume.size_bytes > 0 ? volume.size_bytes : 0;
+}
+
+function partitionRole(volume) {
+  const mountpoint = String(volume.mountpoint || '').toLowerCase();
+  const filesystem = String(volume.filesystem || '').toLowerCase();
+  const description = `${volume.label || ''} ${volume.partition_label || ''}`.toLowerCase();
+
+  if (mountpoint === '/') {
+    return { key: 'system', icon: '🐧', label: 'Système Ubuntu', detail: 'Racine du système' };
+  }
+  if (mountpoint === '/boot/efi' || description.includes('efi system')) {
+    return { key: 'boot', icon: '🚀', label: 'Démarrage EFI', detail: 'Démarre le PC' };
+  }
+  if (filesystem === 'swap') {
+    return { key: 'swap', icon: '🧠', label: 'Mémoire d’appoint', detail: 'Espace swap Linux' };
+  }
+  if (volume.windows_confirmed) {
+    return { key: 'windows', icon: '🪟', label: 'Windows détecté', detail: 'Installation confirmée sur cette partition' };
+  }
+  if (description.includes('recovery') || description.includes('récupération')) {
+    return { key: 'recovery', icon: '🩹', label: 'Récupération', detail: 'Rôle indiqué par son libellé' };
+  }
+  if (description.includes('reserved') || description.includes('réservé')) {
+    return { key: 'reserved', icon: '🧩', label: 'Réservée au système', detail: 'Rôle indiqué par son libellé' };
+  }
+  if (volume.windows_system_component) {
+    return { key: 'windows', icon: '🪟', label: 'Composant Windows', detail: 'Type de partition système Windows détecté' };
+  }
+  if (volume.windows_data_partition) {
+    return { key: 'data', icon: '🗂️', label: 'Partition NTFS', detail: 'Format Windows ; contenu non confirmé' };
+  }
+  if (volume.mounted) {
+    return { key: 'data', icon: '📂', label: 'Données accessibles', detail: 'Partition actuellement ouverte' };
+  }
+  return { key: 'unknown', icon: '🗄️', label: 'Rôle non confirmé', detail: 'Partition détectée, mais non ouverte' };
+}
+
+function partitionState(volume) {
+  if (!volume.mounted) {
+    return { key: 'offline', icon: '○', label: 'Non montée', detail: 'Son occupation ne peut pas être mesurée.' };
+  }
+  if (volume.read_only) {
+    return { key: 'readonly', icon: '🔒', label: 'Lecture seule', detail: 'Les fichiers sont lisibles, mais pas modifiables.' };
+  }
+  return { key: 'online', icon: '✓', label: 'Accessible', detail: 'Lecture et écriture disponibles.' };
+}
+
+function diskMetrics(volumes) {
+  const totalBytes = volumes.reduce((total, volume) => total + volumeSize(volume), 0);
+  const mounted = volumes.filter(volume => volume.mounted);
+  const measurableBytes = mounted.reduce((total, volume) => total + volumeSize(volume), 0);
+  const usedBytes = mounted.reduce((total, volume) => {
+    const percent = Math.max(0, Math.min(100, Number(volume.used_percent) || 0));
+    return total + (volumeSize(volume) * percent / 100);
+  }, 0);
+  return {
+    totalBytes,
+    mountedCount: mounted.length,
+    usedPercent: measurableBytes > 0 ? Math.round(usedBytes * 100 / measurableBytes) : null
+  };
+}
+
+function appendPartitionStrip(target, volumes, diskId, interactive = false) {
+  const totalBytes = volumes.reduce((total, volume) => total + volumeSize(volume), 0);
+  const strip = document.createElement(interactive ? 'div' : 'span');
+  strip.className = `partition-strip${interactive ? ' interactive' : ''}`;
+  strip.setAttribute('aria-label', 'Répartition visuelle des partitions détectées');
+
+  volumes.forEach((volume, index) => {
+    const role = partitionRole(volume);
+    const state = partitionState(volume);
+    const size = volumeSize(volume);
+    const share = totalBytes > 0 ? size * 100 / totalBytes : 100 / volumes.length;
+    const segment = document.createElement(interactive ? 'button' : 'span');
+    if (interactive) {
+      segment.type = 'button';
+      segment.addEventListener('click', () => {
+        document.querySelector(`#${diskId}-partition-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+    segment.className = `partition-segment role-${role.key} state-${state.key}`;
+    segment.style.setProperty('--partition-share', `${share}%`);
+    segment.title = `${volume.label || volume.path} · ${size > 0 ? formatBytes(size) : 'taille inconnue'} · ${state.label}`;
+    segment.setAttribute('aria-label', segment.title);
+    if (share >= 11) segment.textContent = String(index + 1);
+    strip.appendChild(segment);
+  });
+  target.appendChild(strip);
+}
+
+function createPartitionLegend(volumes) {
+  const legend = document.createElement('div');
+  legend.className = 'partition-legend';
+  volumes.forEach((volume, index) => {
+    const role = partitionRole(volume);
+    const state = partitionState(volume);
+    const item = document.createElement('span');
+    const marker = document.createElement('i');
+    marker.className = `role-${role.key} state-${state.key}`;
+    marker.setAttribute('aria-hidden', 'true');
+    const copy = document.createElement('span');
+    const name = document.createElement('strong');
+    name.textContent = `${index + 1}. ${volume.label || volume.path}`;
+    const detail = document.createElement('small');
+    detail.textContent = `${volumeSize(volume) > 0 ? formatBytes(volumeSize(volume)) : 'Taille inconnue'} · ${role.label}`;
+    copy.append(name, detail);
+    item.append(marker, copy);
+    legend.appendChild(item);
+  });
+  return legend;
 }
 
 function aptUpdateState(update, selectionAvailable) {
@@ -279,10 +408,10 @@ function renderEnergyEstimate(cards) {
   const gfnCostTitle = document.createElement('h4');
   gfnCostTitle.textContent = '☁️ Combien coûtent réellement 100 h avec GeForce NOW ?';
   const gfnCostIntro = document.createElement('p');
-  gfnCostIntro.textContent = 'Le coût total additionne l’abonnement mensuel et l’électricité du PC qui reçoit le flux vidéo.';
+  gfnCostIntro.textContent = 'Le coût total additionne l’abonnement mensuel — ou l’équivalent mensuel de l’annuel payé d’avance — et l’électricité du PC qui reçoit le flux vidéo.';
   const gfnPlans = [
-    { name: 'Performance', monthlyPrice: 10.99 },
-    { name: 'Ultime', monthlyPrice: 21.99 }
+    { name: 'Performance', monthlyPrice: 10.99, annualPrice: 109.99 },
+    { name: 'Ultimate', monthlyPrice: 21.99, annualPrice: 219.99 }
   ];
   const profiles = [
     { id: 'gfn', icon: '☁️', name: 'GeForce NOW', watts: 110, detail: 'PC en décodage + écran' },
@@ -311,36 +440,83 @@ function renderEnergyEstimate(cards) {
     const gfnElectricity = profiles[0].watts * duration / 1000 * price;
     gfnCosts.replaceChildren(...gfnPlans.map(plan => {
       const card = document.createElement('article');
-      card.className = `gfn-plan ${plan.name === 'Ultime' ? 'ultimate' : 'performance'}`;
+      card.className = `gfn-plan ${plan.name === 'Ultimate' ? 'ultimate' : 'performance'}`;
       const name = document.createElement('strong');
       name.textContent = `GeForce NOW ${plan.name}`;
-      const formula = document.createElement('span');
-      formula.textContent = `${money(plan.monthlyPrice)} d’abonnement + ${money(gfnElectricity)} d’électricité`;
-      const total = document.createElement('b');
-      total.textContent = `${duration > 100 ? 'Minimum ' : ''}${money(plan.monthlyPrice + gfnElectricity)} pour ${duration} h`;
+      const billing = document.createElement('div');
+      billing.className = 'gfn-billing-grid';
+      const annualMonthly = plan.annualPrice / 12;
+      const annualSaving = plan.monthlyPrice * 12 - plan.annualPrice;
+      const annualSavingPercent = annualSaving * 100 / (plan.monthlyPrice * 12);
+      [
+        {
+          kind: 'monthly',
+          label: 'Paiement mensuel',
+          price: `${money(plan.monthlyPrice)} / mois`,
+          formula: `${money(plan.monthlyPrice)} d’abonnement + ${money(gfnElectricity)} d’électricité`,
+          total: `${duration > 100 ? 'Minimum ' : ''}${money(plan.monthlyPrice + gfnElectricity)} pour ${duration} h`
+        },
+        {
+          kind: 'annual',
+          label: 'Paiement annuel',
+          price: `${money(plan.annualPrice)} en une fois`,
+          formula: `Équivaut à ${money(annualMonthly)} / mois + ${money(gfnElectricity)} d’électricité`,
+          total: `${duration > 100 ? 'Minimum ' : ''}${money(annualMonthly + gfnElectricity)} par mois équivalent pour ${duration} h`
+        }
+      ].forEach(option => {
+        const item = document.createElement('section');
+        item.className = `gfn-billing-option ${option.kind}`;
+        const optionLabel = document.createElement('span');
+        optionLabel.textContent = option.label;
+        const optionPrice = document.createElement('strong');
+        optionPrice.textContent = option.price;
+        const formula = document.createElement('small');
+        formula.textContent = option.formula;
+        const total = document.createElement('b');
+        total.textContent = option.total;
+        item.append(optionLabel, optionPrice, formula, total);
+        billing.appendChild(item);
+      });
+      const saving = document.createElement('small');
+      saving.className = 'gfn-saving';
+      saving.textContent = `Avec l’annuel : ${money(annualSaving)} économisés par an (≈ ${annualSavingPercent.toFixed(1).replace('.', ',')} %), si l’abonnement reste utile toute l’année.`;
       const hourly = document.createElement('small');
-      hourly.textContent = duration > 0
-        ? `≈ ${money((plan.monthlyPrice + gfnElectricity) / duration)} par heure si cette durée est utilisée`
-        : 'Saisissez une durée pour obtenir le coût horaire.';
-      card.append(name, formula, total, hourly);
+      hourly.textContent = duration <= 0
+        ? 'Saisissez une durée pour obtenir le coût horaire.'
+        : duration <= 100
+          ? `Coût horaire abonnement + électricité : mensuel ≈ ${money((plan.monthlyPrice + gfnElectricity) / duration)} · annuel mensualisé ≈ ${money((annualMonthly + gfnElectricity) / duration)}.`
+          : 'Coût horaire non calculé : l’achat éventuel d’heures supplémentaires n’est pas inclus.';
+      card.append(name, billing, saving, hourly);
       return card;
     }));
     gfnCostIntro.textContent = duration <= 100
-      ? `Les formules payantes incluent jusqu’à 100 h par mois. Voici abonnement + électricité pour ${duration} h.`
-      : `Au-delà de 100 h par mois, du temps supplémentaire peut être facturé : les totaux ci-dessous ne l’incluent pas.`;
+      ? `Les formules payantes incluent jusqu’à 100 h chaque mois. L’annuel coûte moins par mois, mais son prix complet est débité en une fois.`
+      : `Au-delà de 100 h dans un même mois, du temps supplémentaire peut être facturé : les totaux ci-dessous ne l’incluent pas.`;
   };
   rate.addEventListener('input', refresh);
   hours.addEventListener('input', refresh);
   refresh();
   const source = document.createElement('small');
   source.className = 'energy-sources muted';
-  source.append('Électricité : 0,194 €/kWh TTC, Tarif Bleu Base, février 2026. Abonnements mensuels France vérifiés le 14 juillet 2026 : ');
+  source.append('Électricité : valeur initiale 0,194 €/kWh TTC — Tarif Bleu Base 3 ou 6 kVA, France métropolitaine, au 1er février 2026, modifiable selon votre contrat (');
+  const electricitySource = document.createElement('a');
+  electricitySource.href = 'https://www.cre.fr/consommateurs/comprendre-les-tarifs-reglementes-de-vente-delectricite-trve.html';
+  electricitySource.target = '_blank';
+  electricitySource.rel = 'noreferrer';
+  electricitySource.textContent = 'source CRE';
+  source.append(electricitySource, '). Tarifs GeForce NOW France mensuels et annuels vérifiés le 14 juillet 2026 : ');
   const nvidiaPricing = document.createElement('a');
   nvidiaPricing.href = 'https://www.nvidia.com/fr-fr/geforce-now/#product-matrix';
   nvidiaPricing.target = '_blank';
   nvidiaPricing.rel = 'noreferrer';
   nvidiaPricing.textContent = 'tarifs officiels NVIDIA';
-  source.append(nvidiaPricing, '. Jeux, connexion Internet et éventuels achats de temps supplémentaire non inclus.');
+  source.append(nvidiaPricing, '. Le plafond reste mensuel avec l’offre annuelle : ce n’est pas une réserve immédiate de 1 200 h. Jusqu’à 15 h non utilisées peuvent être reportées au mois suivant selon les conditions NVIDIA. ');
+  const nvidiaFaq = document.createElement('a');
+  nvidiaFaq.href = 'https://www.nvidia.com/fr-fr/geforce-now/faq/';
+  nvidiaFaq.target = '_blank';
+  nvidiaFaq.rel = 'noreferrer';
+  nvidiaFaq.textContent = 'Voir la FAQ officielle';
+  source.append(nvidiaFaq, '. Jeux, connexion Internet et achats de temps supplémentaire non inclus.');
   gfnCostPanel.append(gfnCostTitle, gfnCostIntro, gfnCosts);
   panel.append(title, baseline, controls, estimates, gfnCostPanel, source);
   cards.push(panel);
@@ -481,10 +657,14 @@ function renderCategories(report) {
     title.textContent = `${categoryIcon(category)} ${category.name}`;
     const score = document.createElement('span');
     score.className = 'score-pill';
-    const scoreAvailable = category.status !== 'unknown';
-    score.textContent = scoreAvailable ? `${category.score}%` : '—';
-    score.title = category.score_explanation || (scoreAvailable ? `Score ${category.score} sur 100` : 'Score indisponible');
-    score.setAttribute('aria-label', `${scoreAvailable ? `${category.score} sur 100` : 'Score indisponible'}. ${category.score_explanation || ''}`.trim());
+    const hasReportedScore = Number.isFinite(category.score);
+    const scoreAvailable = category.status !== 'unknown' && hasReportedScore;
+    const scoreLabel = !hasReportedScore
+      ? 'Catégorie informative, sans note'
+      : scoreAvailable ? `${category.score} sur 100` : 'Score indisponible';
+    score.textContent = !hasReportedScore ? 'Sans note' : scoreAvailable ? `${category.score}%` : '—';
+    score.title = category.score_explanation || scoreLabel;
+    score.setAttribute('aria-label', `${scoreLabel}. ${category.score_explanation || ''}`.trim());
     top.append(title, score);
 
     const summary = document.createElement('p');
@@ -528,10 +708,13 @@ function categorySnapshotFacts(category, report) {
   }
   if (category.id === 'storage') {
     const volumes = report.storage_inventory?.volumes || [];
+    const protectedDiskCount = new Set(volumes
+      .filter(volume => volume.windows_protected)
+      .map(physicalDiskKey)).size;
     return [
       { icon: '💽', value: String(volumes.length), label: 'volumes détectés' },
       { icon: '✅', value: String(volumes.filter(volume => volume.mounted).length), label: 'volumes montés' },
-      { icon: '🪟', value: String(volumes.filter(volume => volume.windows_protected).length), label: 'volumes Windows protégés' },
+      { icon: '🪟', value: String(protectedDiskCount), label: 'disques protégés par prudence' },
       { icon: '👀', value: 'Lecture seule', label: 'mode de diagnostic' }
     ];
   }
@@ -542,6 +725,45 @@ function categorySnapshotFacts(category, report) {
       { icon: '🧩', value: graphics.vulkan?.loader_available ? 'Présent' : 'À vérifier', label: 'chargeur Vulkan' },
       { icon: '🎨', value: graphics.opengl?.loader_available ? 'Présent' : 'À vérifier', label: 'chargeur OpenGL' },
       { icon: '🖼️', value: graphics.session?.type || 'Inconnue', label: 'session graphique' }
+    ];
+  }
+  if (category.id === 'future_lab') {
+    const lab = report.future_lab || {};
+    const cpu = lab.cpu || {};
+    const load = lab.load || {};
+    const memory = lab.memory || {};
+    const network = lab.network || {};
+    const disks = lab.disks || {};
+    const interfaceCount = Number.isFinite(network.reported_interface_count)
+      ? network.reported_interface_count : network.interfaces?.length || 0;
+    const deviceCount = Number.isFinite(disks.reported_device_count)
+      ? disks.reported_device_count : disks.devices?.length || 0;
+    return [
+      {
+        icon: '🧠',
+        value: futureLabAvailable(cpu) ? formatInteger(cpu.logical_cpu_count) : 'Indisponible',
+        label: 'CPU logiques · compteurs depuis le démarrage'
+      },
+      {
+        icon: '⚖️',
+        value: futureLabAvailable(load) && Number.isFinite(load.one_minute) ? LOAD_FORMATTER.format(load.one_minute) : 'Indisponible',
+        label: 'charge moyenne à 1 min · ce n’est pas un %'
+      },
+      {
+        icon: '🌱',
+        value: futureLabAvailable(memory) ? formatKib(memory.available) : 'Indisponible',
+        label: `RAM disponible${futureLabAvailable(memory) ? ` sur ${formatKib(memory.total)}` : ''}`
+      },
+      {
+        icon: '🌐',
+        value: futureLabAvailable(network) ? formatInteger(interfaceCount) : 'Indisponible',
+        label: 'interfaces · compteurs cumulés, aucun débit'
+      },
+      {
+        icon: '💿',
+        value: futureLabAvailable(disks) ? formatInteger(deviceCount) : 'Indisponible',
+        label: 'périphériques · compteurs cumulés, aucune vitesse'
+      }
     ];
   }
   if (category.id === 'apps') {
@@ -562,12 +784,16 @@ function categorySnapshotFacts(category, report) {
 function renderCategorySnapshot(category, report) {
   const snapshot = document.createElement('article');
   snapshot.className = `category-snapshot ${statusClass(category.status)}`;
+  if (category.id === 'future_lab') snapshot.classList.add('future-lab-snapshot');
   const heading = document.createElement('div');
   heading.className = 'snapshot-heading';
   const mascot = document.createElement('span');
   mascot.className = 'snapshot-mascot';
   mascot.setAttribute('aria-hidden', 'true');
-  mascot.textContent = category.status === 'problem' ? '😿' : category.status === 'warning' ? '🧐' : category.status === 'unknown' ? '🤔' : '😺';
+  mascot.textContent = category.status === 'problem' ? '😿'
+    : category.status === 'warning' ? '🧐'
+      : category.status === 'unknown' ? '🤔'
+        : category.id === 'future_lab' ? '🧑‍🔬' : '😺';
   const copy = document.createElement('div');
   const title = document.createElement('h3');
   title.textContent = `Le petit bilan ${categoryIcon(category)}`;
@@ -596,13 +822,198 @@ function renderCategorySnapshot(category, report) {
   const scoreExplanation = document.createElement('section');
   scoreExplanation.className = 'score-explanation';
   const scoreTitle = document.createElement('strong');
-  scoreTitle.textContent = category.status === 'unknown'
-    ? '💡 Pourquoi le score est-il indisponible ?' : `💡 Pourquoi ${category.score} % ?`;
+  scoreTitle.textContent = !Number.isFinite(category.score)
+    ? '💡 Pourquoi cette catégorie n’est-elle pas notée ?'
+    : category.status === 'unknown'
+      ? '💡 Pourquoi le score est-il indisponible ?' : `💡 Pourquoi ${category.score} % ?`;
   const scoreCopy = document.createElement('p');
   scoreCopy.textContent = category.score_explanation || 'Le rapport ne fournit pas encore le détail de ce score.';
   scoreExplanation.append(scoreTitle, scoreCopy);
   snapshot.append(heading, facts, scoreExplanation);
   return snapshot;
+}
+
+function createFutureLabCounterCard(icon, name, items) {
+  const card = document.createElement('article');
+  card.className = 'future-lab-counter-card';
+  const title = document.createElement('h4');
+  title.textContent = `${icon} ${name}`;
+  const metrics = document.createElement('dl');
+  items.forEach(([label, value]) => {
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const detail = document.createElement('dd');
+    detail.textContent = value;
+    metrics.append(term, detail);
+  });
+  card.append(title, metrics);
+  return card;
+}
+
+function renderFutureLab(cards, report) {
+  const lab = report.future_lab || {};
+  const sections = [lab.cpu, lab.load, lab.memory, lab.network, lab.disks];
+  const availableCount = sections.filter(futureLabAvailable).length;
+  const guide = document.createElement('article');
+  guide.className = `future-lab-guide ${availableCount ? 'status-info' : 'status-unknown'}`;
+  const guideHead = document.createElement('div');
+  guideHead.className = 'future-lab-guide-head';
+  const guideCopy = document.createElement('div');
+  const guideTitle = document.createElement('h3');
+  guideTitle.textContent = '🔭 Une photo locale, pas un verdict';
+  const guideSummary = document.createElement('p');
+  guideSummary.textContent = availableCount
+    ? `${availableCount}/5 sources locales sont lisibles. Future Lab les présente sans attribuer de note, de débit ou d’anomalie.`
+    : 'Aucune des cinq sources locales n’est lisible dans ce rapport. Linux Doctor ne remplace pas cette absence par des zéros.';
+  guideCopy.append(guideTitle, guideSummary);
+  const guideChip = document.createElement('span');
+  guideChip.className = `status-chip ${availableCount ? 'status-info' : 'status-unknown'}`;
+  guideChip.textContent = 'Lecture seule';
+  guideHead.append(guideCopy, guideChip);
+  const principles = document.createElement('div');
+  principles.className = 'future-lab-principles';
+  [
+    {
+      icon: '⏱️',
+      title: 'Compteurs cumulatifs',
+      text: 'Les ticks CPU sont cumulés depuis le démarrage. Réseau et disques cumulent depuis le démarrage ou leur dernière réinitialisation : ce ne sont ni des débits ni une activité instantanée.'
+    },
+    {
+      icon: '⚖️',
+      title: 'Charge ≠ pourcentage',
+      text: 'La charge à 1, 5 et 15 minutes représente une moyenne de travail en attente ou en cours. Une valeur de 1,00 ne signifie pas 1 %.'
+    },
+    {
+      icon: '🛡️',
+      title: 'Aucune accusation',
+      text: 'Cet instantané ne déduit aucune lenteur, panne ou activité suspecte. Il fournit seulement des faits locaux à lire dans leur contexte.'
+    }
+  ].forEach(item => {
+    const principle = document.createElement('section');
+    const icon = document.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = item.icon;
+    const copy = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = item.title;
+    const text = document.createElement('p');
+    text.textContent = item.text;
+    copy.append(title, text);
+    principle.append(icon, copy);
+    principles.appendChild(principle);
+  });
+  guide.append(guideHead, principles);
+  cards.push(guide);
+
+  const network = lab.network || {};
+  const interfaces = Array.isArray(network.interfaces) ? network.interfaces : [];
+  const networkDetails = document.createElement('details');
+  networkDetails.className = 'future-lab-details network-details';
+  const networkSummary = document.createElement('summary');
+  const networkCount = Number.isFinite(network.reported_interface_count)
+    ? network.reported_interface_count : interfaces.length;
+  networkSummary.textContent = futureLabAvailable(network)
+    ? `🌐 Voir les ${formatCount(networkCount, 'interface réseau', 'interfaces réseau')}`
+    : '🌐 Interfaces réseau indisponibles';
+  const networkBody = document.createElement('div');
+  networkBody.className = 'future-lab-details-body';
+  if (futureLabAvailable(network)) {
+    const counters = network.counters || {};
+    const note = document.createElement('p');
+    note.className = 'future-lab-cumulative-note';
+    note.textContent = `Total cumulatif observé : ${formatBytes(counters.received_bytes)} reçus · ${formatBytes(counters.transmitted_bytes)} émis. Ces valeurs ne sont pas des vitesses.`;
+    networkBody.appendChild(note);
+    if (network.truncated) {
+      const warning = document.createElement('p');
+      warning.className = 'future-lab-limit';
+      warning.textContent = `La liste est partielle : ${formatInteger(network.observed_interface_count)} interfaces ont été observées, ${formatInteger(network.reported_interface_count)} sont affichées.`;
+      networkBody.appendChild(warning);
+    }
+    const grid = document.createElement('div');
+    grid.className = 'future-lab-counter-grid';
+    interfaces.forEach(item => {
+      const itemCounters = item.counters || {};
+      grid.appendChild(createFutureLabCounterCard('🌐', item.name || 'Interface sans nom', [
+        ['Reçu, cumulatif', formatBytes(itemCounters.received_bytes)],
+        ['Émis, cumulatif', formatBytes(itemCounters.transmitted_bytes)],
+        ['Paquets reçus / émis', `${formatInteger(itemCounters.received_packets)} / ${formatInteger(itemCounters.transmitted_packets)}`],
+        ['Erreurs reçues / émises', `${formatInteger(itemCounters.received_errors)} / ${formatInteger(itemCounters.transmitted_errors)}`],
+        ['Paquets abandonnés reçus / émis', `${formatInteger(itemCounters.received_dropped)} / ${formatInteger(itemCounters.transmitted_dropped)}`]
+      ]));
+    });
+    if (interfaces.length) {
+      networkBody.appendChild(grid);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'La source réseau est lisible, mais aucune interface n’est incluse dans cet extrait.';
+      networkBody.appendChild(empty);
+    }
+  } else {
+    const unavailable = document.createElement('p');
+    unavailable.className = 'muted';
+    unavailable.textContent = 'Le fichier local /proc/net/dev n’a pas fourni de données exploitables. Aucun trafic nul n’est donc affirmé.';
+    networkBody.appendChild(unavailable);
+  }
+  networkDetails.append(networkSummary, networkBody);
+  cards.push(networkDetails);
+
+  const disks = lab.disks || {};
+  const devices = Array.isArray(disks.devices) ? disks.devices : [];
+  const diskDetails = document.createElement('details');
+  diskDetails.className = 'future-lab-details disk-details';
+  const diskSummary = document.createElement('summary');
+  const deviceCount = Number.isFinite(disks.reported_device_count)
+    ? disks.reported_device_count : devices.length;
+  diskSummary.textContent = futureLabAvailable(disks)
+    ? `💿 Voir les ${formatCount(deviceCount, 'périphérique disque', 'périphériques disque')}`
+    : '💿 Compteurs disque indisponibles';
+  const diskBody = document.createElement('div');
+  diskBody.className = 'future-lab-details-body';
+  if (futureLabAvailable(disks)) {
+    const note = document.createElement('p');
+    note.className = 'future-lab-cumulative-note';
+    note.textContent = 'Lectures, écritures et secteurs sont des compteurs noyau cumulatifs. Les secteurs restent volontairement bruts : Linux Doctor ne les transforme pas ici en octets ou en vitesse.';
+    diskBody.appendChild(note);
+    if (Number.isFinite(disks.skipped_pseudo_device_count) && disks.skipped_pseudo_device_count > 0) {
+      const filtered = document.createElement('small');
+      filtered.className = 'muted';
+      filtered.textContent = `${formatInteger(disks.skipped_pseudo_device_count)} périphériques virtuels loop, ram ou zram ont été écartés de cette liste.`;
+      diskBody.appendChild(filtered);
+    }
+    if (disks.truncated) {
+      const warning = document.createElement('p');
+      warning.className = 'future-lab-limit';
+      warning.textContent = `La liste est partielle : ${formatInteger(disks.observed_device_count)} périphériques ont été observés, ${formatInteger(disks.reported_device_count)} sont affichés.`;
+      diskBody.appendChild(warning);
+    }
+    const grid = document.createElement('div');
+    grid.className = 'future-lab-counter-grid';
+    devices.forEach(device => {
+      const counters = device.counters || {};
+      grid.appendChild(createFutureLabCounterCard('💿', device.name || 'Périphérique sans nom', [
+        ['Lectures terminées', formatInteger(counters.reads_completed)],
+        ['Écritures terminées', formatInteger(counters.writes_completed)],
+        ['Secteurs lus, bruts', formatInteger(counters.sectors_read)],
+        ['Secteurs écrits, bruts', formatInteger(counters.sectors_written)]
+      ]));
+    });
+    if (devices.length) {
+      diskBody.appendChild(grid);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = 'La source disque est lisible, mais aucun périphérique réel n’est inclus dans cet extrait.';
+      diskBody.appendChild(empty);
+    }
+  } else {
+    const unavailable = document.createElement('p');
+    unavailable.className = 'muted';
+    unavailable.textContent = 'Le fichier local /proc/diskstats n’a pas fourni de données exploitables. Aucune activité n’est déduite.';
+    diskBody.appendChild(unavailable);
+  }
+  diskDetails.append(diskSummary, diskBody);
+  cards.push(diskDetails);
 }
 
 function renderDiagnostics(report) {
@@ -621,6 +1032,7 @@ function renderDiagnostics(report) {
   diagnosticsTarget.setAttribute('aria-labelledby', `category-tab-${category.id}`);
   setText(diagnosticsStatus, `Catégorie ${category.name} affichée.`);
   const cards = [renderCategorySnapshot(category, report)];
+  if (category.id === 'future_lab') renderFutureLab(cards, report);
   if (category.id === 'storage') {
     const groups = new Map();
     (report.storage_inventory?.volumes || []).forEach(volume => {
@@ -630,16 +1042,23 @@ function renderDiagnostics(report) {
     if (groups.size) {
       const overview = document.createElement('section');
       overview.className = 'storage-overview';
+      const overviewHead = document.createElement('div');
+      overviewHead.className = 'storage-overview-head';
+      const overviewIcon = document.createElement('span');
+      overviewIcon.setAttribute('aria-hidden', 'true');
+      overviewIcon.textContent = '🗂️';
+      const overviewCopy = document.createElement('div');
       const title = document.createElement('h3');
-      title.textContent = 'Vue d’ensemble des disques';
+      title.textContent = 'Vos disques, en un coup d’œil';
       const hint = document.createElement('p');
       hint.className = 'muted';
-      hint.textContent = 'Cliquez un disque pour atteindre ses partitions et son état.';
+      hint.textContent = 'Une carte représente un disque physique. Ouvrez-la pour comprendre chacune de ses partitions.';
+      overviewCopy.append(title, hint);
+      overviewHead.append(overviewIcon, overviewCopy);
       const navigator = document.createElement('div');
       navigator.className = 'disk-navigator';
       groups.forEach((volumes, disk) => {
-        const mounted = volumes.filter(volume => volume.mounted);
-        const used = mounted.length ? Math.round(mounted.reduce((sum, volume) => sum + volume.used_percent, 0) / mounted.length) : 0;
+        const metrics = diskMetrics(volumes);
         const id = `disk-${disk.replace(/[^a-z0-9]/gi, '')}`;
         const button = document.createElement('button');
         button.type = 'button';
@@ -649,71 +1068,184 @@ function renderDiagnostics(report) {
           if (target instanceof HTMLDetailsElement) target.open = true;
           target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-        const ring = document.createElement('span');
-        ring.className = `disk-ring ${volumes.some(volume => volume.windows_protected) ? 'protected' : ''}`;
-        ring.style.setProperty('--used', `${used}%`);
-        ring.textContent = mounted.length ? `${used}%` : '—';
+        const shortcutHead = document.createElement('span');
+        shortcutHead.className = 'disk-shortcut-head';
+        const diskIcon = document.createElement('span');
+        diskIcon.className = 'disk-shortcut-icon';
+        diskIcon.setAttribute('aria-hidden', 'true');
+        diskIcon.textContent = '💽';
+        const shortcutCopy = document.createElement('span');
         const label = document.createElement('strong');
-        label.textContent = disk;
-        const state = document.createElement('small');
-        state.textContent = volumes.some(volume => volume.windows_protected) ? 'Windows protégé' : `${mounted.length}/${volumes.length} monté(s)`;
-        button.append(ring, label, state);
+        label.textContent = disk || 'Disque inconnu';
+        const capacity = document.createElement('small');
+        capacity.textContent = metrics.totalBytes > 0
+          ? `${formatBytes(metrics.totalBytes)} en partitions détectées`
+          : 'Capacité non communiquée';
+        shortcutCopy.append(label, capacity);
+        shortcutHead.append(diskIcon, shortcutCopy);
+        appendPartitionStrip(button, volumes, id);
+        const state = document.createElement('span');
+        state.className = 'disk-shortcut-state';
+        const access = document.createElement('small');
+        access.textContent = `${metrics.mountedCount}/${volumes.length} accessible${metrics.mountedCount === 1 ? '' : 's'}`;
+        const usage = document.createElement('small');
+        usage.textContent = metrics.usedPercent === null ? 'Occupation inconnue' : `${metrics.usedPercent} % utilisés sur les partitions accessibles`;
+        state.append(access, usage);
+        if (volumes.some(volume => volume.windows_protected)) {
+          const protectedBadge = document.createElement('span');
+          protectedBadge.className = 'disk-protected-badge';
+          protectedBadge.textContent = '🪟 Windows protégé';
+          state.appendChild(protectedBadge);
+        }
+        button.prepend(shortcutHead);
+        button.appendChild(state);
         navigator.appendChild(button);
       });
-      overview.append(title, hint, navigator);
+      const overviewNote = document.createElement('small');
+      overviewNote.className = 'storage-capacity-note';
+      overviewNote.textContent = 'ℹ️ Les capacités additionnent les partitions connues. Un éventuel espace non partitionné n’est pas inventé.';
+      overview.append(overviewHead, navigator, overviewNote);
       cards.push(overview);
     }
     groups.forEach((volumes, disk) => {
+      const metrics = diskMetrics(volumes);
       const group = document.createElement('details');
       group.className = 'volume-group';
-      group.id = `disk-${disk.replace(/[^a-z0-9]/gi, '')}`;
+      const diskId = `disk-${disk.replace(/[^a-z0-9]/gi, '')}`;
+      group.id = diskId;
       const heading = document.createElement('summary');
       heading.className = 'volume-group-summary';
+      const headingIcon = document.createElement('span');
+      headingIcon.className = 'volume-group-icon';
+      headingIcon.setAttribute('aria-hidden', 'true');
+      headingIcon.textContent = '💽';
+      const headingCopy = document.createElement('span');
       const headingTitle = document.createElement('strong');
-      headingTitle.textContent = `💽 Disque physique ${disk || 'inconnu'}`;
+      headingTitle.textContent = disk || 'Disque physique inconnu';
       const headingState = document.createElement('small');
-      const mountedCount = volumes.filter(volume => volume.mounted).length;
-      headingState.textContent = `${volumes.length} partition${volumes.length > 1 ? 's' : ''} · ${mountedCount} montée${mountedCount > 1 ? 's' : ''}`;
-      heading.append(headingTitle, headingState);
+      headingState.textContent = `${formatCount(volumes.length, 'partition', 'partitions')} · ${metrics.totalBytes > 0 ? formatBytes(metrics.totalBytes) : 'taille inconnue'} · ${metrics.mountedCount} accessible${metrics.mountedCount === 1 ? '' : 's'}`;
+      headingCopy.append(headingTitle, headingState);
+      const headingAction = document.createElement('span');
+      headingAction.className = 'volume-group-action';
+      headingAction.textContent = 'Voir les partitions';
+      heading.append(headingIcon, headingCopy, headingAction);
+      group.addEventListener('toggle', () => {
+        headingAction.textContent = group.open ? 'Replier' : 'Voir les partitions';
+      });
       group.appendChild(heading);
       if (volumes.some(volume => volume.windows_protected)) {
         const warning = document.createElement('p');
         warning.className = 'dualboot-warning';
-        warning.textContent = '⚠ Dual boot Windows probable : ce disque contient des partitions système et données Windows. Ne pas effacer, reformater ni choisir comme destination automatique.';
+        warning.textContent = '⚠ Contenu Windows confirmé : Linux Doctor protège ce disque des suggestions automatiques. Ne l’effacez et ne le reformatez pas sans avoir identifié son contenu.';
         group.appendChild(warning);
       }
+      const map = document.createElement('section');
+      map.className = 'partition-map';
+      const mapHead = document.createElement('div');
+      mapHead.className = 'partition-map-head';
+      const mapTitle = document.createElement('h4');
+      mapTitle.textContent = 'Carte des partitions';
+      const mapHint = document.createElement('p');
+      mapHint.className = 'muted';
+      mapHint.textContent = 'La longueur indique la taille relative. Les très petites partitions restent volontairement visibles.';
+      mapHead.append(mapTitle, mapHint);
+      map.appendChild(mapHead);
+      appendPartitionStrip(map, volumes, diskId, true);
+      map.appendChild(createPartitionLegend(volumes));
+      group.appendChild(map);
       const groupCards = document.createElement('div');
-      groupCards.className = 'diagnostic-list';
+      groupCards.className = 'partition-list';
       volumes.forEach((volume, partitionIndex) => {
-      const card = document.createElement('article');
-      card.className = `diagnostic-card volume-card ${volume.mounted && !volume.read_only ? 'mounted' : 'unmounted'}`;
-      const head = document.createElement('div');
-      head.className = 'diagnostic-head';
-      const title = document.createElement('h3');
-      title.textContent = volume.label || volume.path;
-      const state = document.createElement('span');
-      state.className = 'status-chip status-info';
-      state.textContent = volume.mounted ? volume.read_only ? 'Lecture seule' : 'Monté' : 'Non monté';
-      head.append(title, state);
-      const evidence = document.createElement('div');
-      evidence.className = 'evidence';
-      [
-        { label: 'Disque physique', value: `${disk} · partition ${partitionIndex + 1}/${volumes.length}` },
-        { label: 'Périphérique', value: volume.path },
-        { label: 'Système de fichiers', value: volume.filesystem || 'Inconnu' },
-        { label: 'Montage', value: volume.mountpoint || 'Aucun' },
-        { label: 'Espace libre', bytes: volume.available_bytes },
-        { label: 'Utilisation', value: volume.mounted ? `${volume.used_percent} %` : 'Non mesurable' },
-        { label: 'UUID', value: volume.uuid || 'Indisponible' }
-      ].forEach(item => {
-        const pill = document.createElement('span');
-        pill.textContent = evidenceText(item);
-        evidence.appendChild(pill);
+        const role = partitionRole(volume);
+        const state = partitionState(volume);
+        const card = document.createElement('article');
+        card.id = `${diskId}-partition-${partitionIndex}`;
+        card.className = `volume-card role-${role.key} state-${state.key}`;
+        const head = document.createElement('div');
+        head.className = 'volume-card-head';
+        const identity = document.createElement('div');
+        identity.className = 'volume-identity';
+        const roleIcon = document.createElement('span');
+        roleIcon.className = 'volume-role-icon';
+        roleIcon.setAttribute('aria-hidden', 'true');
+        roleIcon.textContent = role.icon;
+        const identityCopy = document.createElement('div');
+        const position = document.createElement('small');
+        position.textContent = `Partition ${partitionIndex + 1} sur ${volumes.length}`;
+        const volumeTitle = document.createElement('h3');
+        volumeTitle.textContent = volume.label || volume.path;
+        const volumePath = document.createElement('span');
+        volumePath.className = 'volume-path';
+        volumePath.textContent = volume.path;
+        identityCopy.append(position, volumeTitle, volumePath);
+        identity.append(roleIcon, identityCopy);
+        const stateBadge = document.createElement('span');
+        stateBadge.className = `partition-state state-${state.key}`;
+        stateBadge.textContent = `${state.icon} ${state.label}`;
+        head.append(identity, stateBadge);
+
+        const facts = document.createElement('div');
+        facts.className = 'volume-facts';
+        [
+          { icon: '🎯', label: 'Rôle', value: role.label, detail: role.detail },
+          { icon: '📏', label: 'Capacité', value: volumeSize(volume) > 0 ? formatBytes(volumeSize(volume)) : 'Inconnue', detail: volume.mounted ? `${volume.used_percent} % utilisés` : 'Occupation inconnue' },
+          { icon: '🧩', label: 'Format', value: String(volume.filesystem || 'Inconnu').toUpperCase(), detail: volume.partition_label || 'Sans libellé technique' },
+          { icon: '📍', label: 'Emplacement', value: volume.mountpoint || 'Pas ouverte', detail: state.detail }
+        ].forEach(item => {
+          const fact = document.createElement('section');
+          const icon = document.createElement('span');
+          icon.setAttribute('aria-hidden', 'true');
+          icon.textContent = item.icon;
+          const factCopy = document.createElement('span');
+          const label = document.createElement('small');
+          label.textContent = item.label;
+          const value = document.createElement('strong');
+          value.textContent = item.value;
+          const detail = document.createElement('small');
+          detail.textContent = item.detail;
+          factCopy.append(label, value, detail);
+          fact.append(icon, factCopy);
+          facts.appendChild(fact);
+        });
+
+        let capacity;
+        if (volume.mounted) {
+          capacity = usageBar(volume.used_percent, `${volume.used_percent} % utilisés · ${formatBytes(volume.available_bytes) || 'espace libre inconnu'} libres`);
+        } else {
+          capacity = document.createElement('div');
+          capacity.className = 'capacity capacity-unavailable';
+          const unavailableBar = document.createElement('div');
+          unavailableBar.className = 'capacity-bar unavailable';
+          const unavailableText = document.createElement('small');
+          unavailableText.className = 'muted';
+          unavailableText.textContent = 'Occupation inconnue : une partition non montée n’est pas forcément vide.';
+          capacity.append(unavailableBar, unavailableText);
+        }
+
+        const technical = document.createElement('details');
+        technical.className = 'volume-technical';
+        const technicalSummary = document.createElement('summary');
+        technicalSummary.textContent = 'Afficher les détails techniques';
+        const technicalList = document.createElement('dl');
+        [
+          ['Périphérique', volume.path],
+          ['Disque parent', disk || 'Inconnu'],
+          ['UUID', volume.uuid || 'Indisponible'],
+          ['Libellé de partition', volume.partition_label || 'Non renseigné'],
+          ['Accès', state.detail],
+          ['Transport', volume.transport || 'Non renseigné'],
+          ['Amovible', volume.removable ? 'Oui' : 'Non signalé comme amovible']
+        ].forEach(([term, value]) => {
+          const dt = document.createElement('dt');
+          dt.textContent = term;
+          const dd = document.createElement('dd');
+          dd.textContent = value;
+          technicalList.append(dt, dd);
+        });
+        technical.append(technicalSummary, technicalList);
+        card.append(head, facts, capacity, technical);
+        groupCards.appendChild(card);
       });
-      const stateLabel = volume.mounted ? `${volume.used_percent} % utilisés · ${formatBytes(volume.available_bytes)} libres` : 'Non monté : espace libre non mesurable';
-      card.append(head, evidence, usageBar(volume.mounted ? volume.used_percent : 0, stateLabel));
-      groupCards.appendChild(card);
-    });
       group.appendChild(groupCards);
       cards.push(group);
     });
@@ -837,17 +1369,68 @@ function renderDiagnostics(report) {
     const knowledgeHead = document.createElement('div');
     knowledgeHead.className = 'diagnostic-head';
     const knowledgeTitle = document.createElement('h3');
-    knowledgeTitle.textContent = '📚 Guide local Ubuntu Gaming';
+    knowledgeTitle.textContent = '📚 Base de connaissances Ubuntu Gaming';
     const knowledgeChip = document.createElement('span');
     knowledgeChip.className = `status-chip ${knowledge.available ? 'status-info' : 'status-unknown'}`;
-    knowledgeChip.textContent = knowledge.available ? `${knowledge.relevant_entries || 0} fiche(s) utile(s)` : 'Base indisponible';
+    knowledgeChip.textContent = knowledge.available
+      ? knowledge.source === 'user-update' ? 'Mise à jour utilisateur' : 'Incluse dans Linux Doctor'
+      : 'Base indisponible';
     knowledgeHead.append(knowledgeTitle, knowledgeChip);
     const knowledgeSummary = document.createElement('p');
     const gameNotices = (knowledge.entries || []).filter(entry => entry.kind === 'game').length;
     knowledgeSummary.textContent = knowledge.available
-      ? `${knowledge.total_entries || 0} fiches sont stockées uniquement dans l’application. ${gameNotices} ${gameNotices === 1 ? 'alerte spécifique correspond' : 'alertes spécifiques correspondent'} aux jeux installés. Aucun contrôle Internet n’est lancé.`
+      ? `${knowledge.relevant_entries || 0} conseil${knowledge.relevant_entries === 1 ? '' : 's'} correspond${knowledge.relevant_entries === 1 ? '' : 'ent'} à votre machine, dont ${gameNotices} ${gameNotices === 1 ? 'fiche de jeu' : 'fiches de jeux'}. Le diagnostic reste local : aucune connexion n’est lancée pendant l’analyse.`
       : 'La base locale de conseils gaming n’a pas été chargée ; aucun problème connu ne peut être rapproché des jeux installés.';
     knowledgeCard.append(knowledgeHead, knowledgeSummary);
+    if (knowledge.available) {
+      const metadata = document.createElement('div');
+      metadata.className = 'knowledge-metadata';
+      [
+        ['🏷️', 'Version', knowledge.version || 'Non renseignée'],
+        ['📅', 'Révisée le', knowledge.reviewed_on || 'Date inconnue'],
+        ['🛡️', 'Origine active', knowledge.source === 'user-update' ? 'Copie personnelle validée' : 'Copie livrée avec l’application']
+      ].forEach(([icon, label, value]) => {
+        const item = document.createElement('span');
+        const itemIcon = document.createElement('i');
+        itemIcon.setAttribute('aria-hidden', 'true');
+        itemIcon.textContent = icon;
+        const copy = document.createElement('span');
+        const term = document.createElement('small');
+        term.textContent = label;
+        const detail = document.createElement('strong');
+        detail.textContent = value;
+        copy.append(term, detail);
+        item.append(itemIcon, copy);
+        metadata.appendChild(item);
+      });
+      knowledgeCard.appendChild(metadata);
+
+      const updateDetails = document.createElement('details');
+      updateDetails.className = 'knowledge-update';
+      const updateToggle = document.createElement('summary');
+      updateToggle.textContent = '🌐 Vérifier et installer manuellement une base plus récente';
+      const updateExplanation = document.createElement('p');
+      updateExplanation.textContent = 'La commande télécharge uniquement la base officielle du projet, contrôle sa taille et son format, puis l’installe dans vos données utilisateur. Elle ne demande pas sudo et ne modifie pas le système.';
+      const updateCommand = typeof knowledge.manual_update_command === 'string' && knowledge.manual_update_command === KNOWLEDGE_UPDATE_COMMAND
+        ? knowledge.manual_update_command : KNOWLEDGE_UPDATE_COMMAND;
+      const command = document.createElement('code');
+      command.textContent = updateCommand;
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.textContent = 'Copier la commande de mise à jour';
+      const copyStatus = document.createElement('small');
+      copyStatus.className = 'muted';
+      copyStatus.setAttribute('role', 'status');
+      copy.addEventListener('click', () => copyText(updateCommand, copyStatus));
+      actions.appendChild(copy);
+      const security = document.createElement('small');
+      security.className = 'muted';
+      security.textContent = 'Le téléchargement HTTPS protège le transport, mais la version 1.0 ne vérifie pas encore de signature cryptographique. La mise à jour reste donc volontairement manuelle.';
+      updateDetails.append(updateToggle, updateExplanation, command, actions, copyStatus, security);
+      knowledgeCard.appendChild(updateDetails);
+    }
     if ((knowledge.entries || []).length) {
       const knowledgeDetails = document.createElement('details');
       knowledgeDetails.className = 'knowledge-details';
@@ -924,7 +1507,7 @@ function renderDiagnostics(report) {
       refresh();
       const note = document.createElement('small');
       note.className = 'muted';
-      note.textContent = 'Simulation V0.4 : ouvrez ensuite le gestionnaire de stockage Steam pour effectuer un déplacement contrôlé.';
+      note.textContent = 'Simulation en lecture seule : ouvrez ensuite le gestionnaire de stockage Steam pour effectuer un déplacement contrôlé.';
       selectionDetails.append(selectionToggle, selection);
       card.append(title, description, summary, selectionDetails, note);
       cards.push(card);

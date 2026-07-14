@@ -272,14 +272,29 @@ function renderEnergyEstimate(cards) {
   controls.append(rateLabel, hoursLabel);
   const estimates = document.createElement('div');
   estimates.className = 'energy-estimates';
+  const gfnCosts = document.createElement('div');
+  gfnCosts.className = 'gfn-cost-grid';
+  const gfnCostPanel = document.createElement('section');
+  gfnCostPanel.className = 'gfn-cost-panel';
+  const gfnCostTitle = document.createElement('h4');
+  gfnCostTitle.textContent = '☁️ Combien coûtent réellement 100 h avec GeForce NOW ?';
+  const gfnCostIntro = document.createElement('p');
+  gfnCostIntro.textContent = 'Le coût total additionne l’abonnement mensuel et l’électricité du PC qui reçoit le flux vidéo.';
+  const gfnPlans = [
+    { name: 'Performance', monthlyPrice: 10.99 },
+    { name: 'Ultime', monthlyPrice: 21.99 }
+  ];
   const profiles = [
     { id: 'gfn', icon: '☁️', name: 'GeForce NOW', watts: 110, detail: 'PC en décodage + écran' },
     { id: 'mid', icon: '🖥️', name: 'PC gamer moyen', watts: 420, detail: 'RTX 5070 / Ryzen 5 + 32 Go + écran 27″ 120 Hz' },
     { id: 'uber', icon: '🚀', name: 'Uber PC', watts: 620, detail: 'RTX 4080 Super / CPU haut de gamme + 32 Go DDR5 + écran 27″ 120 Hz' }
   ];
+  const money = value => `${value.toFixed(2).replace('.', ',')} €`;
   const refresh = () => {
     const price = Number(rate.value) || 0;
     const duration = Number(hours.value) || 0;
+    titleDuration.textContent = `${duration} h de jeu`;
+    gfnCostTitle.textContent = `☁️ Combien coûtent réellement ${duration} h avec GeForce NOW ?`;
     estimates.replaceChildren(...profiles.map(profile => {
       const card = document.createElement('section');
       card.className = `energy-profile ${profile.id}`;
@@ -293,17 +308,41 @@ function renderEnergyEstimate(cards) {
       card.append(name, result, detail);
       return card;
     }));
+    const gfnElectricity = profiles[0].watts * duration / 1000 * price;
+    gfnCosts.replaceChildren(...gfnPlans.map(plan => {
+      const card = document.createElement('article');
+      card.className = `gfn-plan ${plan.name === 'Ultime' ? 'ultimate' : 'performance'}`;
+      const name = document.createElement('strong');
+      name.textContent = `GeForce NOW ${plan.name}`;
+      const formula = document.createElement('span');
+      formula.textContent = `${money(plan.monthlyPrice)} d’abonnement + ${money(gfnElectricity)} d’électricité`;
+      const total = document.createElement('b');
+      total.textContent = `${duration > 100 ? 'Minimum ' : ''}${money(plan.monthlyPrice + gfnElectricity)} pour ${duration} h`;
+      const hourly = document.createElement('small');
+      hourly.textContent = duration > 0
+        ? `≈ ${money((plan.monthlyPrice + gfnElectricity) / duration)} par heure si cette durée est utilisée`
+        : 'Saisissez une durée pour obtenir le coût horaire.';
+      card.append(name, formula, total, hourly);
+      return card;
+    }));
+    gfnCostIntro.textContent = duration <= 100
+      ? `Les formules payantes incluent jusqu’à 100 h par mois. Voici abonnement + électricité pour ${duration} h.`
+      : `Au-delà de 100 h par mois, du temps supplémentaire peut être facturé : les totaux ci-dessous ne l’incluent pas.`;
   };
   rate.addEventListener('input', refresh);
   hours.addEventListener('input', refresh);
   refresh();
   const source = document.createElement('small');
-  source.className = 'muted';
-  source.textContent = 'Référence France : 0,194 €/kWh TTC (Tarif Bleu Base, février 2026). Modifiez ce tarif selon votre pays ou contrat.';
-  const membership = document.createElement('p');
-  membership.className = 'membership-cost';
-  membership.textContent = 'GeForce NOW Ultimate : 219,98 € / 12 mois hors promotion, soit 18,33 € / mois. L’abonnement et l’électricité sont deux coûts distincts.';
-  panel.append(title, baseline, controls, estimates, membership, source);
+  source.className = 'energy-sources muted';
+  source.append('Électricité : 0,194 €/kWh TTC, Tarif Bleu Base, février 2026. Abonnements mensuels France vérifiés le 14 juillet 2026 : ');
+  const nvidiaPricing = document.createElement('a');
+  nvidiaPricing.href = 'https://www.nvidia.com/fr-fr/geforce-now/#product-matrix';
+  nvidiaPricing.target = '_blank';
+  nvidiaPricing.rel = 'noreferrer';
+  nvidiaPricing.textContent = 'tarifs officiels NVIDIA';
+  source.append(nvidiaPricing, '. Jeux, connexion Internet et éventuels achats de temps supplémentaire non inclus.');
+  gfnCostPanel.append(gfnCostTitle, gfnCostIntro, gfnCosts);
+  panel.append(title, baseline, controls, estimates, gfnCostPanel, source);
   cards.push(panel);
 }
 
@@ -472,7 +511,7 @@ function categorySnapshotFacts(category, report) {
     const steam = report.steam_inventory || {};
     const gfn = report.gfn_inventory || {};
     return [
-      { icon: '🎮', value: String(steam.games?.length || 0), label: 'jeux Steam détectés' },
+      { icon: '🎮', value: String((steam.games || []).filter(item => item.kind !== 'tool').length), label: 'jeux Steam détectés' },
       { icon: '🗂️', value: String(steam.libraries?.length || 0), label: 'bibliothèques locales' },
       { icon: '🕹️', value: String(steam.controller_count || steam.controllers?.length || 0), label: 'manettes détectées' },
       { icon: '☁️', value: gfn.installed ? 'Installé' : 'Non détecté', label: 'GeForce NOW' }
@@ -720,6 +759,7 @@ function renderDiagnostics(report) {
       controllerPanel.appendChild(controllerGrid);
     }
     cards.push(controllerPanel);
+    renderEnergyEstimate(cards);
     (inventory.libraries || []).forEach((library, index) => {
       const card = document.createElement('article');
       card.className = `diagnostic-card ${library.mounted && library.writable ? 'status-ok' : 'status-warning'}`;
@@ -738,28 +778,33 @@ function renderDiagnostics(report) {
         { label: 'Volume', value: library.volume_path || 'Non associé' },
         { label: 'Système de fichiers', value: library.filesystem || 'Inconnu' },
         { label: 'Espace libre', bytes: library.available_bytes },
-        { label: 'Jeux installés', value: String(library.game_count) },
+        { label: 'Jeux installés', value: String(library.game_count ?? 0) },
+        { label: 'Outils Steam', value: String(library.tool_count ?? 0) },
         { label: 'Jeux déclarés', bytes: library.game_bytes }
       ].forEach(item => {
         const pill = document.createElement('span');
         pill.textContent = evidenceText(item);
         evidence.appendChild(pill);
       });
-      const games = (inventory.games || []).filter(game => game.library_index === index);
-      if (games.length) {
+      const applications = (inventory.games || []).filter(game => game.library_index === index);
+      const games = applications.filter(game => game.kind !== 'tool');
+      const tools = applications.filter(game => game.kind === 'tool');
+      const renderSteamItems = (items, kind) => {
         const details = document.createElement('details');
-        details.className = 'steam-games-details';
-        details.open = true;
+        details.className = `steam-content-details steam-${kind}-details`;
+        details.open = kind === 'games';
         const summary = document.createElement('summary');
-        summary.textContent = `🎮 Les ${games.length} jeux et leurs icônes`;
+        summary.textContent = kind === 'games'
+          ? `🎮 Les ${items.length} jeux et leurs icônes`
+          : `🧰 Les ${items.length} outils Steam — Proton, runtimes et composants`;
         const list = document.createElement('div');
         list.className = 'steam-game-grid';
-        games.forEach(game => {
+        items.forEach(game => {
           const item = document.createElement('article');
-          item.className = 'steam-game';
+          item.className = `steam-game steam-${kind.slice(0, -1)}`;
           const visual = document.createElement('span');
           visual.className = 'steam-game-icon';
-          visual.textContent = '🕹️';
+          visual.textContent = kind === 'games' ? '🕹️' : '🧰';
           const iconUri = safeImageDataUri(game.icon_data_uri);
           if (iconUri) {
             const image = document.createElement('img');
@@ -770,7 +815,7 @@ function renderDiagnostics(report) {
           }
           const copy = document.createElement('span');
           const name = document.createElement('strong');
-          name.textContent = game.name || `Jeu ${game.appid}`;
+          name.textContent = game.name || `${kind === 'games' ? 'Jeu' : 'Outil'} ${game.appid}`;
           const size = document.createElement('small');
           size.textContent = `${formatBytes(game.size_bytes)} · AppID ${game.appid}`;
           copy.append(name, size);
@@ -778,8 +823,12 @@ function renderDiagnostics(report) {
           list.appendChild(item);
         });
         details.append(summary, list);
-        card.append(head, evidence, details);
+        return details;
+      };
+      if (games.length) {
+        card.append(head, evidence, renderSteamItems(games, 'games'));
       } else card.append(head, evidence);
+      if (tools.length) card.append(renderSteamItems(tools, 'tools'));
       cards.push(card);
     });
     const knowledge = report.gaming_knowledge || {};
@@ -880,7 +929,6 @@ function renderDiagnostics(report) {
       card.append(title, description, summary, selectionDetails, note);
       cards.push(card);
     }
-    renderEnergyEstimate(cards);
   }
   if (category.id === 'updates') {
     const inventory = report.updates_inventory || {};
@@ -1213,9 +1261,9 @@ async function loadReport(animated = false) {
 document.querySelector('#insight-dialog button').addEventListener('click', () => dialog.close());
 analyzeButton.addEventListener('click', () => loadReport(true).catch(error => { diagnosticsTarget.textContent = error.message; }));
 scrollTopButton?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-window.addEventListener('scroll', () => {
-  scrollTopButton?.classList.toggle('visible', window.scrollY > 500);
-}, { passive: true });
+const updateScrollTopButton = () => scrollTopButton?.classList.toggle('visible', window.scrollY > 320);
+window.addEventListener('scroll', updateScrollTopButton, { passive: true });
+updateScrollTopButton();
 loadReport().catch(error => {
   diagnosticsTarget.textContent = error.message;
   setText(overviewTarget, error.message);

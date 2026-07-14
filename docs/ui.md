@@ -46,8 +46,10 @@ Exemple : pour une partition système à 97 %, expliquer que l'espace libre faci
 - Chaque catégorie commence par « Le petit bilan » et quatre faits courts accompagnés d'icônes. L'explication du score apparaît immédiatement dans ce bilan ; une valeur inconnue est représentée par un tiret et jamais par un faux 0 %.
 - Les jeux Steam et leurs icônes sont ouverts par défaut parce qu'ils constituent la partie la plus visuelle du domaine Gaming ; la personne peut toujours replier la liste.
 - Les disques physiques conservent une synthèse visible, tandis que partitions, montages et preuves techniques sont repliés par défaut. Un raccourci vers un disque ouvre automatiquement son détail.
-- Le comparatif énergétique affiche un titre lumineux et animé autour de « 100 h de jeu ». L'animation est désactivée lorsque le système demande une réduction des mouvements.
-- Une flèche de retour en haut apparaît après défilement. Les liens externes, dont GitHub, s'ouvrent dans un nouvel onglet.
+- Le comparatif énergétique apparaît avant les longues listes Steam. Un courant lumineux parcourt continuellement le contour de « 100 h de jeu » sans variation de luminosité globale ni clignotement. L'animation est désactivée lorsque le système demande une réduction des mouvements.
+- Le coût GeForce NOW distingue l'abonnement mensuel, l'électricité estimée, leur total et le coût horaire lorsque la durée est utilisée. Performance et Ultime restent séparés ; la date tarifaire, la source NVIDIA et les exclusions sont visibles.
+- Les jeux sont visibles par défaut. Proton, Steam Linux Runtime et les autres outils sont regroupés dans un volet technique séparé et replié.
+- Le bouton « ↑ Haut » apparaît après un défilement plus court, s'aligne sur le bord droit du contenu et conserve un contour de focus visible. Les liens externes, dont GitHub, s'ouvrent dans un nouvel onglet.
 - Les manettes détectées reçoivent un badge de famille et, pour Steam/Valve, le logo Steam local. Un badge générique évite de masquer un modèle non reconnu.
 - Une jaquette absente n'est jamais téléchargée automatiquement : l'interface utilise la petite icône locale du cache Steam ou un pictogramme de secours.
 

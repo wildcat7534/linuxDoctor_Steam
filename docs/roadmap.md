@@ -71,6 +71,18 @@ La base 0.7 constitue un catalogue éditorial initial, pas une promesse de compa
 
 La détection d'une manette reste un constat de présence. La validation des touches, du profil Steam Input et du comportement en jeu nécessite toujours un essai réel.
 
+## Livraison 0.9 — Budget de jeu et bibliothèque Steam propre
+
+- Remplacer le clignotement du titre « 100 h » par un courant continu qui parcourt son contour, avec respect de la préférence de réduction des mouvements.
+- Remonter le comparatif avant la bibliothèque longue et détailler le coût GeForce NOW : abonnement Performance ou Ultime, électricité, total pour la durée et coût horaire effectif.
+- Dater les tarifs, lier la source officielle NVIDIA et annoncer clairement ce qui n'est pas inclus.
+- Séparer au niveau du backend les jeux des outils Steam comme Proton, Steam Linux Runtime et Steamworks Common Redistributables.
+- Exclure ces outils des suggestions de migration et des rapprochements avec les fiches de jeux.
+- Rendre le retour en haut plus visible avec un libellé et le placer contre le bord du contenu plutôt qu'à l'extrémité de l'écran.
+- Adopter le nouveau logo carré allégé fourni avec le projet.
+
+Cette classification repose sur des AppID et noms connus. Elle doit être enrichie avec des cas réels sans transformer une heuristique en certitude universelle.
+
 ## Critères de sortie pour chaque diagnostic
 
 - Une règle testée avec des cas nominal, avertissement et données absentes.

@@ -1,35 +1,34 @@
 # Versions de Linux Doctor
 
-Ce document résume les versions. Les choix techniques restent dans l'[architecture](architecture.md) et les travaux futurs dans la [feuille de route](roadmap.md).
+Cette page résume les versions publiées. La conception technique se trouve dans l’[architecture](architecture.md) et les travaux suivants dans la [feuille de route](roadmap.md).
 
-## 0.6 — Socle graphique et mises à jour
+## 1.1.0 — Future Lab vivant · publiée
 
-- Inventaire local des cartes, pilotes noyau, session Wayland/X11 et chargeurs Vulkan/OpenGL.
-- Simulation APT en lecture seule avec candidats prêts, différés, retenus ou phasés.
-- Actualisation volontaire des index APT dans le terminal, sans installation de paquet.
+- fenêtre Future Lab autonome, responsive et accessible depuis le tableau de bord ;
+- identité visuelle de cockpit, graphiques Canvas accessibles et valeurs HTML équivalentes ;
+- flux JSON local renouvelé environ chaque seconde et lancé automatiquement par `scripts/serve.sh` ;
+- collecteur autonome protégé par un verrou contre les exécutions concurrentes ;
+- timeline locale de 60 points par défaut, réglable à 30 ou 120 ;
+- taux CPU, réseau et disque calculés uniquement entre deux snapshots compatibles ;
+- rejet du fichier live ancien et repli explicite sur la photographie du rapport ;
+- réseau cumulé sur toutes les interfaces, avec avertissement sur les couches virtuelles ;
+- assistant Gemma 3 1B int8 optionnel, local et chargé sur consentement dans un Web Worker ;
+- reformulation limitée à l’instantané capturé et à ses constats qualitatifs ;
+- rejet des réponses contenant des nombres, des commandes ou un contenu hors des mesures Future Lab.
 
-## 0.7 — Assistant Ubuntu Gaming
+## 1.0 — Centre Ubuntu Gaming · publiée
 
-- Accueil recentré sur la préparation d'Ubuntu pour jouer et bilans courts avant les détails.
-- Icônes Steam lues dans le cache local et première base gaming datée et sourcée.
-- Descriptions APT longues repliées et rapport toujours produit sans accès réseau.
+- comparaison GeForce NOW mensuelle et annuelle, coût mensuel équivalent et économie ;
+- disques et partitions réorganisés autour de leur rôle et de leur état ;
+- base gaming versionnée, vérifiée puis installée dans les données utilisateur ;
+- premier instantané Future Lab pour CPU, charge, mémoire, réseau et activité disque ;
+- fiche Valheim reliée au support officiel.
 
-## 0.8 — Diagnostic gaming explicable
+## 0.6 à 0.9 — Construction du socle
 
-- Explication des scores, notamment les 95 % de Gaming et Graphismes.
-- Jeux visibles par défaut, manettes regroupées par famille et détails des disques repliables.
-- Petites victoires mises en avant, comparatif sur 100 h et retour en haut de page.
+- **0.6** : graphismes, session, Vulkan/OpenGL et simulation APT ;
+- **0.7** : accueil Gaming First, icônes Steam et première base gaming ;
+- **0.8** : scores expliqués, manettes, détails repliables et comparatif 100 h ;
+- **0.9** : budget GeForce NOW, séparation jeux/outils Steam et navigation longue améliorée.
 
-## 0.9 — Budget et bibliothèque Steam
-
-- Comparatif GeForce NOW mensuel avec abonnement, électricité, total et coût horaire.
-- Séparation des jeux et des outils Steam comme Proton ou Steam Linux Runtime.
-- Animation continue autour des 100 h, navigation longue améliorée et nouveau logo allégé.
-
-## 1.0 — Centre Ubuntu Gaming
-
-- Comparaison GeForce NOW mensuelle et annuelle avec coût mensuel équivalent et économie explicite.
-- Présentation des disques et partitions réorganisée autour de leur rôle et de leur état.
-- Mise à jour manuelle et optionnelle de la base gaming, validée puis installée localement avec retour à la copie intégrée en cas d'échec.
-- Premier socle Future Lab en lecture seule pour CPU, charge, mémoire, réseau et activité disque.
-- Base initiale enrichie d’une fiche Valheim reliée au support officiel, sans transformer un signal externe en problème détecté.
+Les détails de ces anciennes versions restent dans l’historique Git ; cette synthèse conserve les jalons utiles au produit actuel.

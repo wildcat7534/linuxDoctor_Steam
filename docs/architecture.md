@@ -1,98 +1,92 @@
 # Architecture
 
-Linux Doctor sépare collecte, diagnostic et présentation. Le moteur C17 produit un rapport JSON versionné ; l’interface statique le rend sans accès direct au système et sans inventer de diagnostic.
+Linux Doctor 1.1.0 associe un moteur C17 déterministe, deux interfaces web statiques, un flux Future Lab local et un copilote facultatif exécuté dans le navigateur. Le modèle ne participe ni à la collecte, ni aux calculs, ni au diagnostic.
+
+## Processus lancés
 
 ```text
-sources Linux locales → collecteurs C → règles → rapport JSON
-                                                   ↓
-                                      HTML / CSS / JavaScript
-
-action réseau volontaire → téléchargement borné → validation C → données XDG
+scripts/serve.sh
+├── make run ───────────────────────────────> frontend/report.json
+├── refresh-future-lab.sh ── verrou ───────> frontend/future-lab-live.json
+│                                  remplacement atomique environ chaque seconde
+└── serveur HTTP Python sur 127.0.0.1:4545
+    └── en-têtes COOP/COEP pour WebAssembly multithreadé
 ```
+
+`scripts/serve.sh` est le point d’entrée normal : il lance le rapport, le collecteur live et le serveur, puis arrête les processus enfants à sa fermeture. `scripts/refresh-future-lab.sh` sert au lancement autonome. Il acquiert un verrou non bloquant avec `flock`, refuse un second collecteur et retire son fichier live lors de l’arrêt normal du mode continu.
+
+Il n’existe pas d’endpoint dynamique ni de serveur d’événements. La page interroge les deux fichiers JSON statiques avec le cache HTTP désactivé.
 
 ## Composants
 
 | Composant | Responsabilité |
 | --- | --- |
-| CLI C17 | orchestration, options, erreurs et écriture du rapport |
-| Collecteurs | observations locales bornées par domaine |
-| Règles | sévérités, scores, preuves, explications et recommandations |
-| Rapport JSON V2 | contrat stable entre moteur, interface et tests |
-| Interface web | bilans, navigation et divulgation progressive |
-| Historique | comparaison de snapshots compatibles dans l’état XDG |
-| Base gaming | contexte éditorial versionné, rapproché des observations locales |
+| CLI C17 | collecte, diagnostics, options et sérialisation |
+| Modules métier | stockage, Steam, graphismes, APT, applications, connaissance et Future Lab |
+| Rapport JSON V2 | contrat complet entre le moteur et le tableau de bord |
+| Snapshot Future Lab | mesure autonome horodatée destinée au rafraîchissement rapide |
+| Tableau de bord | priorités gaming, preuves, recommandations et actions existantes |
+| Fenêtre Future Lab | validation du flux, deltas, graphiques et lecture factuelle |
+| Assistant local | reformulation qualitative d’un seul instantané capturé au clic |
+| Historique | comparaison de rapports compatibles dans l’état XDG |
+| Base gaming | contexte éditorial versionné du tableau de bord |
 
-Les domaines sont actuellement compilés dans un seul exécutable. [plugins.md](plugins.md) décrit le contrat souhaité pour les isoler ; il n’existe pas encore de chargement dynamique public.
+La base gaming et les diagnostics du rapport ne sont pas des entrées de l’assistant Future Lab 1.1.0.
 
-## Rapport JSON V2
+## Rapport et snapshot live
 
-La 1.0 ajoute des blocs racine optionnels à V2 sans modifier le sens des champs existants. Cette extension additive reste lisible par un consommateur qui ignore les clés inconnues ; toute rupture sémantique future exigera une nouvelle version de schéma.
+Le rapport JSON V2 porte les conclusions durables de l’analyse : santé, catégories, stockage, Steam, graphismes, APT, applications, GeForce NOW, base gaming, historique et photographie Future Lab.
 
-Les blocs principaux sont indépendants afin qu’une source indisponible ne casse pas toute l’analyse :
+`linux-doctor --future-lab-json` collecte exclusivement Future Lab et produit un document `linux-doctor.future-lab.live` version 1. Il contient l’UTC, le temps Unix, une horloge monotone, l’identifiant de démarrage et les compteurs bruts CPU, réseau et disque. Le backend ne calcule aucun débit.
 
-- `application`, `generated_at` et `schema_version` identifient le rapport ;
-- `system_health`, `summary`, `categories` et `good_news` portent les conclusions ;
-- `storage_inventory` décrit les volumes détectés ;
-- `steam_inventory` sépare bibliothèques, jeux, outils et manettes ;
-- `graphics_inventory` décrit périphériques, pilote, session et chargeurs locaux ;
-- `updates_inventory` expose les candidats APT et l’état de leur sélection ;
-- `apps_inventory` et `gfn_inventory` décrivent les outils gaming visibles localement ;
-- `gaming_knowledge` expose uniquement les fiches pertinentes et leur provenance ;
-- `future_lab` contient les instantanés bruts CPU, charge, mémoire, réseau et disque ;
-- `history` compare uniquement des analyses compatibles.
+## Acceptation d’un flux
 
-Une donnée manquante produit `unknown`, une valeur nulle explicitement documentée ou un bloc indisponible. Elle ne devient jamais une réussite par défaut.
+La fenêtre rejette un fichier live si son schéma ou sa version diffère, si l’identifiant de démarrage est absent, si son horodatage n’est pas fiable ou s’il date de plus de quatre secondes. Une avance d’horloge supérieure à dix secondes est également refusée. En l’absence de live accepté, `report.json` fournit uniquement une photographie statique.
 
-## Contrat de diagnostic
+Deux snapshots live ne produisent des deltas que s’ils partagent :
 
-Chaque diagnostic possède un identifiant stable, une sévérité (`ok`, `info`, `warning`, `problem`, `unknown`), un résumé, des preuves, des recommandations et une explication. Le fait brut reste distinct du texte pédagogique.
+- le schéma et sa version ;
+- le même identifiant de démarrage ;
+- un intervalle monotone compris entre 0,2 et 15 secondes ;
+- le même nombre de CPU logiques pour le taux CPU ;
+- le même ensemble d’interfaces réseau, identifié par des noms uniques et non tronqué ;
+- le même ensemble de disques physiques, identifié par `major:minor:nom` et non tronqué.
 
-```json
-{
-  "id": "storage.root.nearly_full",
-  "severity": "warning",
-  "title": "Partition système presque pleine",
-  "evidence": [{"label": "Utilisation", "value": "97 %"}],
-  "explanation": {
-    "observed": "La partition racine utilise 97 % de sa capacité.",
-    "why": "Les mises à jour et installations ont besoin d’espace libre.",
-    "impact": "Une opération peut échouer faute d’espace.",
-    "next_step": "Identifier d’abord les données volumineuses."
-  }
-}
-```
+Un compteur qui diminue, une identité manquante ou une topologie différente invalide le taux concerné. Les valeurs directes, comme la charge ou l’occupation mémoire, restent affichables sans delta.
 
-Le frontend peut filtrer et reformuler la mise en page, mais il ne change ni la sévérité ni la conclusion.
+Le débit réseau additionne toutes les interfaces rapportées par `/proc/net/dev`. Une interface physique, un pont, un VPN ou une couche de conteneur peuvent représenter le même trafic à plusieurs niveaux : ce cumul décrit l’activité observée, pas le débit de la seule connexion Internet.
 
-## Collecte locale
+Les taux disque utilisent uniquement les périphériques physiques reconnus. Les partitions et volumes logiques restent visibles dans les détails mais ne sont pas ajoutés au graphique de débit.
 
-- Le stockage privilégie les sources structurées et ne mesure l’occupation que d’un volume monté.
-- Steam lit des manifestes bornés et des icônes locales régulières d’au plus 64 Kio ; aucune jaquette n’est téléchargée.
-- La classification `game`/`tool` est prudente. Un outil n’entre pas dans une simulation de migration de jeux.
-- Les familles de manettes proviennent du nom noyau ; elles ne prouvent pas le fonctionnement de Steam Input.
-- Graphismes vérifie les faits locaux disponibles, pas un véritable rendu ni les performances d’un jeu.
-- APT exécute des simulations à arguments fixes, sans shell, `sudo`, verrou d’écriture ou réseau. Sorties, durée et groupe de processus sont bornés.
-- Future Lab lit `/proc` avec des tableaux de taille fixe. Les compteurs CPU, réseau et disque sont cumulés depuis le démarrage ; deux instantanés sont nécessaires pour un taux.
+## Assistant local 1.1.0
 
-Le score global n’inclut que les catégories dont la pondération est définie et explicable. Si l’une d’elles est inconnue, `system_health.complete` devient faux et la valeur partielle est masquée.
+`scripts/setup-local-ai.sh` installe la révision épinglée de Gemma 3 1B Instruct int8 et Transformers.js 4.2.0. Le manifeste local doit correspondre exactement au modèle, à la révision, à la quantification et au runtime attendus. L’identifiant, la taille et la licence sont centralisés dans [data-sources.md](data-sources.md).
 
-## Données connectées
+Le modèle ne se charge qu’après consentement et clic. À cet instant, l’interface fige la mesure courante puis calcule des constats qualitatifs déterministes pour CPU, charge, RAM, swap, réseau et disque. Seuls ces constats sans valeur numérique, accompagnés de la question saisie, entrent dans le prompt.
 
-Une analyse normale n’accède jamais au réseau. `scripts/update-knowledge.sh` est une action manuelle distincte : il télécharge un fichier HTTPS borné, puis le moteur valide le schéma avant installation atomique dans `$XDG_DATA_HOME/linux-doctor`. Une copie utilisateur invalide ne doit jamais remplacer la base intégrée.
+Le contexte n’inclut pas :
 
-HTTPS protège le transport mais ne signe pas le contenu. La mise à jour automatique reste interdite jusqu’à l’ajout d’une signature, d’une expiration et d’un retour arrière. La politique complète est dans [data-sources.md](data-sources.md).
+- la timeline ou les snapshots précédents ;
+- les diagnostics, scores, preuves ou recommandations du rapport ;
+- les fiches de la base gaming ;
+- les inventaires détaillés des interfaces ou disques ;
+- une commande à exécuter.
 
-L’actualisation APT est également séparée : `scripts/refresh-updates.sh` laisse `/usr/bin/sudo` demander le secret dans le terminal, exécute uniquement `apt-get update`, puis régénère le rapport. Le frontend ne reçoit jamais le mot de passe.
+Le système demande une reformulation française courte, sans cause inventée ni commande. Après génération, un validateur rejette toute réponse contenant un chiffre, une commande système ou de gestion de paquets, ou aucun terme lié aux mesures Future Lab. Une réponse rejetée est remplacée par la lecture factuelle déterministe.
 
-## Historique
+## Actions séparées
 
-`--history` constitue l’activation explicite. Les snapshots compatibles sont conservés sous `$XDG_STATE_HOME/linux-doctor` ou `~/.local/state/linux-doctor`, avec une rétention bornée. Les chemins personnels, secrets et inventaires détaillés inutiles en sont exclus. Voir [history.md](history.md).
+Les actions APT et base gaming du tableau de bord restent indépendantes de Future Lab. Le copilote local ne propose et n’exécute aucune commande. Toute future connexion entre une mesure et une action demandera un contrat distinct, documenté et testé.
 
-## Sécurité et évolution
+## Ressources et fiabilité
 
-- aucune réparation, écriture de `/etc/fstab` ou migration réelle implicite ;
-- aucune exécution de commande système depuis le navigateur ;
-- serveur de développement limité à la boucle locale ;
-- chaînes, fichiers, tableaux, sorties et délais bornés ;
-- données distantes datées et sourcées, rapport toujours utilisable hors ligne ;
-- changement du schéma accompagné de fixtures, tests et stratégie de compatibilité.
+- collecteur live protégé par verrou et arrêt coordonné avec le serveur ;
+- fichiers JSON remplacés atomiquement ;
+- timeline en mémoire de 60 points par défaut, plafonnée à 120 ;
+- modèle chargé uniquement à la demande et libéré à la fermeture de la page ;
+- inférence isolée dans un Web Worker pour préserver la fluidité de l’interface ;
+- WebGPU utilisé avec un adaptateur matériel, WASM multithreadé en repli ;
+- valeurs HTML disponibles même si Canvas ou le modèle échoue ;
+- fonctionnement du diagnostic et des graphiques statiques sans IA.
+
+La provenance des artefacts et les accès réseau sont détaillés dans [data-sources.md](data-sources.md).

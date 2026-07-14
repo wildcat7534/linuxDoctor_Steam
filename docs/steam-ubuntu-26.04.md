@@ -1,49 +1,49 @@
 # Steam sur Ubuntu 26.04
 
-## Objectif du domaine
+Le domaine Steam répond à une question pratique : **les fondations nécessaires à mes jeux et périphériques sont-elles cohérentes sur cette machine ?** Il combine installation de Steam, runtimes, architecture i386, Vulkan, bibliothèques, Proton, manettes et session graphique.
 
-Le domaine `steam` indique les prérequis locaux mesurables, sans promettre qu'un jeu précis est compatible : présence des manettes reconnues par le noyau, règles `steam-devices`, architecture i386, bibliothèque Steam et espace disponible.
+Ubuntu 26.04 LTS apporte notamment NTSYNC, qui peut améliorer Wine et Proton. Linux Doctor le replace dans l’ensemble réellement nécessaire : pilotes Vulkan, bibliothèques 32 bits, runtime Steam et version de Proton.
 
-Ubuntu 26.04 LTS apporte notamment NTSYNC, qui peut améliorer les performances de Wine et Proton. Cela ne remplace ni les pilotes graphiques compatibles Vulkan, ni les bibliothèques 32 bits nécessaires au client Steam et à certains jeux.
+## Matrice Gaming Readiness
 
-## Problèmes récurrents à distinguer
-
-Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour être réduits honnêtement à une alerte universelle. Linux Doctor les classe plutôt ainsi :
-
-| Famille | Signal local possible | Limite à annoncer |
+| Domaine | Signal local | Livraison visée |
 | --- | --- | --- |
-| Manettes et Steam Input | Manette Steam/Valve, Xbox, PlayStation, Nintendo, 8BitDo ou générique vue par le noyau ; règles `steam-devices` présentes | Le nom permet seulement une classification visuelle. Le test d'entrée Steam et le profil par jeu restent nécessaires. |
-| Droits `hidraw` / udev | Règles du paquet `steam-devices` | Certaines manettes tierces demandent des règles spécifiques. |
-| Bibliothèques 32 bits | Architecture `i386` activée | Les bibliothèques graphiques i386 doivent correspondre au pilote installé. |
-| Vulkan, pilotes et Wayland/Xwayland | Linux Doctor relève le pilote noyau, la session et la présence des chargeurs/manifests locaux | Aucun rendu n'est encore lancé ; une régression peut dépendre d'une version précise de Mesa, NVIDIA, Proton ou du bureau. |
-| Proton par jeu | Aucun verdict global fiable | Audio, vidéo, réseau, anti-triche et périphériques dépendent du jeu et de la version de Proton. |
-| Client Steam / runtime | À ajouter : installation et journaux | Fenêtre noire, `steamwebhelper` et mises à jour du runtime sont des symptômes distincts. |
-| Flatpak, Snap ou paquet Debian | À ajouter : provenance d'installation | Les permissions et les runtimes diffèrent ; ils ne doivent pas être confondus. |
-| Bibliothèques de jeux | Taille de `steamapps` et volumes montés | La taille ne révèle ni le jeu ni le contenu personnel. |
-| GeForce NOW sous Wayland | Flatpak officiel, session Wayland et manette détectée | Une demande de portail bureau peut venir du mode souris Steam Input ; elle n'est pas une preuve de panne. |
+| Steam | provenance Debian/Flatpak/Snap, version et runtime | prévu en 1.2 |
+| Vulkan | chargeurs et pilotes 64/32 bits cohérents | socle livré, cohérence 32 bits en 1.2 |
+| Proton | outils installés et version choisie par jeu | outils livrés, contexte par jeu en 1.2 |
+| Steam Input | famille de manette, `steam-devices` et test guidé | famille et règles livrées, test en 1.2 |
+| GameMode, MangoHud, Gamescope | présence, version et contexte d’usage | inventaire livré, contexte en 1.2 |
+| DXVK/VKD3D-Proton | composants associés au préfixe du jeu | prévu en 1.2 |
+| Wayland/Xwayland | session, pilote et contexte du jeu | socle livré |
+| Bibliothèques | volume, accès, jeux et espace | livré, actions prévues en 1.3 |
+| GeForce NOW | application, session et manette | livré |
 
-## Sources de suivi
+## Diagnostic par jeu
 
-- [Documentation Steam pour Ubuntu](https://documentation.ubuntu.com/steam/)
-- [Notes de version Ubuntu 26.04 LTS](https://documentation.ubuntu.com/release-notes/26.04/summary-for-lts-users/)
-- [Suivi officiel Steam pour Linux](https://github.com/ValveSoftware/steam-for-linux)
-- [Suivi officiel Proton](https://github.com/ValveSoftware/Proton/issues)
-- [Dépannage Steam Controller](https://help.steampowered.com/en/faqs/view/41EA-7E25-B1F0-67E9)
-- [Exigences système GeForce NOW](https://www.nvidia.com/en-gb/geforce-now/system-reqs/)
-- [Application GeForce NOW pour Linux](https://blogs.nvidia.com/blog/geforce-now-thursday-linux/)
+Une conclusion utile associe l’AppID, la version de Proton, le pilote, la session et la source du problème connu. Cela permet d’écrire « ce problème est confirmé pour cette combinaison » ou « cette piste est probable » au lieu d’appliquer un verdict universel à tout Steam.
 
-## Règle de prudence
+Les symptômes sont regroupés par lancement, image/HDR, performances, audio, réseau/anti-triche, contrôleur et stockage. Cette taxonomie alimente la base gaming, les filtres Future Lab et l’export d’un futur dossier d’assistance.
 
-Une incompatibilité anti-triche, un jeu qui ne démarre pas ou une régression Proton doit rester un diagnostic associé à un jeu et une version de Proton. Linux Doctor peut préparer les informations utiles et pointer vers le suivi concerné, mais ne doit pas affirmer qu'un PC est globalement « compatible avec tous les jeux Steam ».
+## Base gaming
 
-## Base locale et mise à jour 1.0
+`data/gaming-knowledge.tsv` utilise l’AppID Steam comme cible des fiches `game`. Les fiches `steam`, `controller`, `gfn` et `ubuntu` apparaissent selon les observations locales pertinentes.
 
-Les fiches de compatibilité sont conservées dans `data/gaming-knowledge.tsv`. Une fiche `game` utilise l'AppID Steam comme cible ; elle n'apparaît que si ce jeu est installé. Les fiches générales `steam`, `controller`, `gfn` et `ubuntu` suivent la même règle de pertinence locale.
-
-Chaque ajout doit préciser une source HTTPS et une date de révision. Une copie plus récente peut être vérifiée puis installée volontairement dans les données XDG avec `./scripts/update-knowledge.sh`. L’analyse ne contacte jamais Internet et revient à la copie intégrée si la copie utilisateur est invalide. Une fiche ancienne peut guider une investigation, mais ne prouve pas que le problème existe encore avec la version courante du jeu, de Proton ou du pilote. Voir [data-sources.md](data-sources.md).
+Chaque fiche porte source HTTPS, date de révision, sévérité et action conseillée. `./scripts/update-knowledge.sh` installe une copie plus récente dans les données XDG ; le moteur conserve la base valide la plus récente. Le détail de la publication appartient à [data-sources.md](data-sources.md).
 
 ## Jeux et outils Steam
 
-Linux Doctor distingue les jeux des composants distribués par Steam. Les noms Proton, Steam Linux Runtime, Steam Runtime, Steamworks Common Redistributables, Steam Input Configs et SteamVR, ainsi que plusieurs AppID de runtime connus, sont classés comme outils. Leur taille reste comptabilisée séparément, mais ils ne sont ni proposés à la migration comme des jeux, ni associés à une fiche de compatibilité de jeu.
+Linux Doctor distingue les jeux de Proton, Steam Linux Runtime, Steam Runtime, Steamworks Common Redistributables, Steam Input Configs et SteamVR. Cette séparation permet des totaux utiles, une migration correcte et des diagnostics spécifiques aux runtimes.
 
-Cette séparation est une heuristique locale : Valve peut ajouter ou renommer un composant. Un outil non reconnu doit être documenté et couvert par un test avant d'étendre la règle.
+Valve peut ajouter ou renommer un composant. L’heuristique est donc complétée par les AppID connus et des fixtures ; un outil nouveau devient une règle testée plutôt qu’une exception invisible.
+
+## Sources officielles
+
+- [Documentation Steam pour Ubuntu](https://documentation.ubuntu.com/steam/)
+- [Notes de version Ubuntu 26.04 LTS](https://documentation.ubuntu.com/release-notes/26.04/summary-for-lts-users/)
+- [Suivi Steam pour Linux](https://github.com/ValveSoftware/steam-for-linux)
+- [Suivi Proton](https://github.com/ValveSoftware/Proton/issues)
+- [Dépannage Steam Controller](https://help.steampowered.com/en/faqs/view/41EA-7E25-B1F0-67E9)
+- [Exigences GeForce NOW](https://www.nvidia.com/en-gb/geforce-now/system-reqs/)
+- [Application GeForce NOW pour Linux](https://blogs.nvidia.com/blog/geforce-now-thursday-linux/)
+
+La [veille technologique](technology-watch.md) définit la cadence de révision ; la [feuille de route](roadmap.md) suit la livraison des diagnostics.

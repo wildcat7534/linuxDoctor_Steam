@@ -1,31 +1,28 @@
 # Historique local
 
-## Périmètre livré en 1.0
-
-L’historique est un suivi volontaire et local, pas une collecte continue. Il n’est activé que lorsque Linux Doctor est lancé avec `--history` ; `make run` utilise explicitement cette option.
-
-Chaque analyse compatible ajoute une ligne privée dans :
+L’historique permet de vérifier qu’une action améliore réellement la machine. `make run` active `--history` et conserve les 30 analyses compatibles les plus récentes dans :
 
 ```text
 $XDG_STATE_HOME/linux-doctor/snapshots-v2.csv
 ```
 
-Si `XDG_STATE_HOME` est absent, le chemin devient `~/.local/state/linux-doctor/snapshots-v2.csv`. Chaque ligne contient uniquement :
+Sans `XDG_STATE_HOME`, le chemin devient `~/.local/state/linux-doctor/snapshots-v2.csv`.
 
-- l’horodatage Unix de l’analyse ;
-- le score global courant ;
-- le pourcentage utilisé de la partition racine.
+## Données actuelles
 
-Les chemins personnels, noms de réseaux, diagnostics détaillés et sorties de commandes ne sont pas enregistrés. Le fichier est créé avec les permissions `0600` et conserve au plus les 30 dernières lignes.
+Le format introduit en 1.0 reste celui de la 1.1.0. Chaque ligne contient l’horodatage, le score global et le remplissage de la partition racine. Le fichier privé utilise les permissions `0600`. Les chemins personnels, réseaux, sorties de commandes et inventaires détaillés ne sont pas enregistrés.
 
-## Comparaison affichée
+À partir de la deuxième analyse compatible, l’interface affiche le score précédent, son écart et l’évolution de `/`. Une analyse dont le score est incomplet n’ajoute pas de point comparable.
 
-À partir de la deuxième analyse compatible, le rapport expose le score précédent, son écart et l’évolution du remplissage de `/`. L’interface ne prétend pas encore identifier les problèmes apparus ou résolus : ce rapprochement demanderait de conserver des identifiants et états que la 1.0 n’enregistre pas.
+## Extension 1.2–1.3
 
-Si le score courant est incomplet, par exemple hors d’une session graphique reconnue, aucune ligne n’est ajoutée et la comparaison est marquée incompatible. Une première analyse signale simplement qu’aucun point précédent n’existe.
+- bouton d’effacement dans l’interface ;
+- identité locale de machine et de partition pour éviter les comparaisons incohérentes ;
+- diagnostics apparus, résolus ou inchangés ;
+- marqueurs d’action pour comparer avant/après ;
+- sessions Future Lab bornées associées volontairement à un jeu ;
+- durée et volume conservés visibles avant l’enregistrement.
 
-## Effacement et limites
+La timeline live de Future Lab 1.1.0 reste en mémoire et n’entre pas automatiquement dans cet historique. La 1.2 prévoit une session enregistrable afin que l’utilisateur choisisse précisément le jeu et la durée à comparer.
 
-La 1.0 ne possède pas encore de bouton ni de commande Linux Doctor pour effacer l’historique. La personne peut supprimer manuellement `snapshots-v2.csv` depuis son gestionnaire de fichiers ou son terminal. L’ancien `snapshots.csv`, s’il existe, n’est ni lu ni modifié.
-
-Linux Doctor ne détecte pas encore un changement de machine, de partition racine ou d’horloge incohérente. Ces garde-fous, l’effacement intégré et une comparaison par diagnostic sont des évolutions futures ; ils ne doivent pas être présentés comme disponibles.
+En 1.1.0, l’effacement consiste à supprimer `snapshots-v2.csv`. L’ancien `snapshots.csv`, s’il existe, reste indépendant.

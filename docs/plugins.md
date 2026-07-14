@@ -1,32 +1,32 @@
-# Modules et futur contrat de plugins
+# Modules et extensions
 
-Les domaines sont aujourd’hui des modules C17 liés dans un exécutable unique. Ils partagent un rapport normalisé mais il n’existe pas encore d’API binaire ni de chargeur dynamique public. Le mot « plugin » désigne ici la frontière d’architecture visée, pas une capacité déjà livrée.
+Les domaines Linux Doctor sont des modules C17 liés dans un exécutable unique. Ils partagent le rapport normalisé, le contrat de diagnostic et le futur contrat d’action. Cette architecture permet déjà d’ajouter rapidement Steam, GPU, périphériques ou sources de mesure sans coupler leur collecte à l’interface.
 
-## Responsabilité d’un module
+## Contrat d’un module
 
-Un module :
+Un module peut déclarer quatre capacités :
 
-1. collecte des observations locales de façon défensive ;
-2. transforme uniquement les signaux fiables en diagnostics ;
-3. retourne disponibilité, preuves, sévérité et limites ;
-4. fournit une explication pédagogique et une prochaine étape ;
-5. échoue sans empêcher les autres domaines de produire leur résultat.
+1. **collecte** : observations locales ou données distantes autorisées ;
+2. **diagnostic** : faits, niveau de certitude, impact et recommandation ;
+3. **action** : aperçu, privilèges, exécution et vérification ;
+4. **présentation** : métadonnées permettant au frontend de rendre le résultat.
 
-Il ne modifie pas le système, n’appelle pas Internet pendant l’analyse et ne traite pas `unknown` comme `ok`.
+Une panne de module ne bloque pas les autres domaines. Les identifiants restent stables afin que l’historique et la base gaming puissent référencer le même diagnostic.
 
-## Contrat avant chargement dynamique
+## API d’extension visée
 
-Une vraie API de plugins devra définir :
+Une API publique sera utile lorsque des fournisseurs ou domaines devront être développés séparément. Son manifeste décrira :
 
-- version ABI et compatibilité du schéma ;
-- capacités et privilèges déclarés ;
-- budget temps, mémoire et taille de sortie ;
-- annulation et délai d’expiration ;
-- provenance des données et identifiants de diagnostics stables ;
-- isolation des erreurs et stratégie de signature/distribution.
+- version ABI et schéma JSON ;
+- capacités, commandes et privilèges ;
+- budget temps, mémoire, stockage et réseau ;
+- annulation, délais et taille de sortie ;
+- provenance et fraîcheur des données ;
+- permissions d’action ;
+- signature, distribution et compatibilité.
 
-L’ajout de complexité n’est justifié que si des modules indépendants doivent être développés ou distribués séparément. Jusque-là, des interfaces C testables et des fichiers sources séparés restent plus simples et plus sûrs.
+Jusqu’à ce jalon, les interfaces C testables offrent un cycle d’intégration plus rapide et évitent une ABI prématurée.
 
 ## Qualité
 
-Chaque nouveau domaine commence par des fixtures : état nominal, donnée absente, sortie malformée, limite dépassée et dépendance indisponible. Les commandes externes éventuelles ont des arguments fixes, une sortie bornée et un délai. La procédure générale de développement appartient à [coding-style.md](coding-style.md).
+Chaque domaine possède des fixtures nominales, absentes, malformées et à la limite. Toute commande externe a des arguments contrôlés, une sortie bornée et un délai. Une action ajoute des tests de simulation, interruption, échec et vérification finale. Les conventions générales sont dans [coding-style.md](coding-style.md).

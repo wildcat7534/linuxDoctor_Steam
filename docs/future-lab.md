@@ -1,70 +1,86 @@
-# Linux Doctor — Future Lab
+# Future Lab
 
-Future Lab est le laboratoire d’idées avancées de Linux Doctor, pas une promesse de tout surveiller. Sa vision reste celle d’un centre de contrôle inspiré de la science-fiction — Black Mesa, Aperture Science, Ghost in the Shell ou JARVIS — où chaque animation révèle un fait utile au lieu de décorer un terminal.
+Future Lab est le cockpit vivant livré avec Linux Doctor 1.1.0. Sa fenêtre autonome affiche les mesures de la machine, leurs variations valides et une reformulation locale facultative d’un instantané choisi par l’utilisateur.
 
-## Principe
+## Capacités livrées
 
-L’utilisateur doit comprendre ce que fait sa machine sans être accusé ni inquiété à tort. Future Lab :
+| Capacité | Expérience utilisateur |
+| --- | --- |
+| Fenêtre autonome | ouverture depuis le tableau de bord, lien de retour et responsive |
+| Flux live local | nouvelle mesure horodatée environ chaque seconde |
+| Graphiques | timeline en mémoire, 60 points par défaut et 120 maximum |
+| Source explicite | état live, flux à actualiser ou photographie statique |
+| Assistant local | reformulation qualitative de l’instantané capturé au clic |
 
-- observe d’abord en lecture seule ;
-- sépare valeur brute, interprétation et niveau de certitude ;
-- affiche `inconnu` plutôt que d’inventer ;
-- ne scanne pas le réseau et ne collecte pas en continu par défaut ;
-- reste utile hors ligne et n’impose jamais d’intelligence artificielle.
+## Ouvrir le cockpit
 
-## Première tranche 1.0
+Le lancement normal suffit :
 
-| Domaine | Données locales | Limite affichée |
+```sh
+./scripts/serve.sh
+```
+
+Ce script régénère le rapport, démarre automatiquement le collecteur Future Lab et sert l’interface. Il arrête également le collecteur quand le serveur se ferme.
+
+Pour faire fonctionner uniquement le collecteur, par exemple pendant le développement :
+
+```sh
+./scripts/refresh-future-lab.sh
+```
+
+Le script remplace atomiquement `frontend/future-lab-live.json` environ chaque seconde. Un verrou `flock` refuse une deuxième instance ; `Ctrl+C` arrête la boucle et retire le fichier live qu’elle possède. L’option `--once` écrit un seul snapshot et le conserve.
+
+## Mesures et graphiques
+
+| Carte | Valeur principale | Graphique |
 | --- | --- | --- |
-| CPU | nombre logique et compteurs de planification de `/proc/stat` | compteurs cumulés depuis le démarrage, pas un pourcentage instantané |
-| Charge | moyennes 1, 5 et 15 minutes de `/proc/loadavg` | charge de file d’exécution, pas un pourcentage CPU |
-| Mémoire | total, disponible, utilisée, cache, buffers et swap de `/proc/meminfo` | photographie locale, sans attribution à un processus |
-| Réseau | interfaces, octets, paquets, erreurs et pertes de `/proc/net/dev` | compteurs cumulés, aucune destination ni géolocalisation |
-| Disques | lectures, écritures et secteurs de `/proc/diskstats` | compteurs cumulés ; partitions et volumes peuvent se recouvrir |
-| Connaissance | base gaming versionnée, validée et mise à jour manuellement | HTTPS sans signature cryptographique dans la 1.0 |
+| CPU | activité entre deux compteurs `/proc/stat` | pourcentage dans le temps |
+| Charge | charge 1 minute rapportée aux CPU logiques | pression relative, distincte de l’activité CPU |
+| Mémoire | RAM et swap utilisés | pourcentages et évolution |
+| Réseau | réception et émission cumulées | octets par seconde |
+| Disques | lectures et écritures des disques physiques | opérations par seconde |
 
-Cette tranche donne des faits bruts bornés. Elle ne prétend pas encore afficher du « temps réel » : un débit ou un taux exige deux mesures horodatées comparables.
+Le réseau additionne toutes les interfaces observées. Un pont, un VPN, une interface physique ou une couche de conteneur peuvent compter le même trafic à plusieurs niveaux ; le graphique représente donc l’activité cumulée de la machine, pas uniquement la connexion Internet.
 
-## Expériences suivantes
+Canvas dessine les courbes, tandis que les valeurs, unités et états restent présents dans le HTML. La profondeur est réglable à 30, 60 ou 120 points et `prefers-reduced-motion` réduit les animations.
 
-### Mesures et timeline
+## Quand un delta est valide
 
-- échantillonner CPU, réseau et disque pour produire des deltas explicables ;
-- relever fréquence, température, pression mémoire, TRIM et SMART lorsque les sources sont disponibles ;
-- afficher une timeline locale de lancements, pics et changements, avec durée et rétention visibles ;
-- ajouter GPU, VRAM, encodeur et consommation par fournisseur sans masquer les différences d’API.
+Le premier snapshot initialise les compteurs. Le suivant produit un taux uniquement si les deux mesures ont le même schéma, la même version, le même démarrage et des horloges compatibles.
 
-### Réseau
+La compatibilité est vérifiée plus finement selon la carte : même nombre de CPU logiques, mêmes noms d’interfaces réseau, mêmes identités `major:minor:nom` des disques physiques et aucune liste tronquée. Une topologie modifiée ou un compteur qui repart en arrière remet le taux en attente.
 
-- relier une connexion TCP/UDP à un processus avec protocole, volume et interface ;
-- reconnaître VPN, WireGuard, DNS, SMB, NFS, conteneurs et machines virtuelles ;
-- proposer une carte des appareils uniquement après consentement à un scan local actif ;
-- expliquer une variation par rapport à une référence locale avant d’employer « inhabituel » ;
-- ne jamais qualifier une connexion de malveillante sans preuve externe vérifiable.
+Un fichier live vieux de plus de quatre secondes est rejeté. Future Lab essaie alors `report.json`, dont la photographie peut afficher charge et mémoire mais ne sert jamais à inventer un débit.
 
-La géolocalisation, les fabricants MAC et les réputations d’adresses nécessitent des bases externes datées. Ils restent hors ligne ou optionnels selon la politique de [sources de données](data-sources.md).
+## Assistant local
 
-### Journaux et gaming
+La 1.1.0 utilise Gemma 3 1B Instruct ONNX en int8 avec Transformers.js 4.2.0. Le modèle et sa révision sont détaillés dans [data-sources.md](data-sources.md).
 
-- filtrer noyau, systemd, Steam, Proton, Flatpak, Gamescope et pilotes ;
-- rapprocher lancement d’un jeu, compilation de shaders, pression VRAM et activité disque ;
-- conserver un extrait minimal et expurgé, jamais une sortie brute interminable ;
-- distinguer corrélation temporelle et cause confirmée.
+Son installation facultative demande `hf` et `npm` :
 
-### Intelligence artificielle facultative
+```sh
+./scripts/setup-local-ai.sh
+```
 
-Un modèle local pourra résumer un journal, comparer des pistes ou reformuler une explication. Il ne produit pas le fait source, ne décide pas d’une réparation et n’exécute rien. Le mode règles locales doit toujours rester complet.
+Le modèle est stocké dans les ressources frontend locales. Dans Future Lab, il ne se charge en mémoire qu’après consentement et clic sur **Charger et analyser**. L’inférence s’exécute dans un Web Worker : WebGPU est retenu pour un adaptateur matériel, avec WASM multithreadé en repli.
 
-## Portes de sécurité avant livraison
+Au clic, l’interface :
 
-Toute expérience doit préciser :
+1. fige l’instantané actuellement affiché ;
+2. calcule et montre ses constats qualitatifs déterministes ;
+3. envoie uniquement ces constats sans chiffres et la question au modèle ;
+4. valide la réponse avant de l’afficher.
 
-1. la question utilisateur à laquelle elle répond ;
-2. la source locale ou distante et sa fraîcheur ;
-3. le coût CPU, mémoire, disque et réseau ;
-4. les données personnelles possibles et leur rétention ;
-5. les faux positifs connus et le niveau de certitude ;
-6. les fixtures, tests d’erreur et comportement sans dépendance ;
-7. la manière de désactiver et d’effacer la fonction.
+Le modèle ne reçoit ni la timeline, ni les diagnostics, ni les preuves, ni les recommandations, ni la base gaming. Il ne compare pas plusieurs moments et ne connaît pas le jeu lancé.
 
-La priorité de livraison et les étapes stables appartiennent à la [feuille de route](roadmap.md). Les technologies surveillées et leur cadence appartiennent à la [veille technologique](technology-watch.md).
+Son rôle est limité à reformuler ce que les cartes permettent déjà de dire : niveau d’activité CPU ou mémoire, présence d’activité réseau ou disque et limites de ces observations. Il ne propose aucune commande et ne déduit aucune cause ou panne.
+
+Toute réponse comportant un nombre, une commande système ou de gestion de paquets, ou un texte sans rapport avec CPU, charge, mémoire, réseau ou stockage est rejetée. Les constats déterministes restent affichés comme source de vérité.
+
+Après l’installation initiale, mesure, question et réponse restent sur la machine.
+
+## Prochaine étape
+
+La 1.2 prévoit des sessions de jeu volontaires avec GPU, VRAM, températures et événements Steam/Proton. Leur éventuelle utilisation par une IA nécessitera un consentement et un contrat de contexte séparés ; elle ne fait pas partie de l’assistant 1.1.0.
+
+La suite est tenue dans la [feuille de route](roadmap.md), l’implémentation dans l’[architecture](architecture.md) et la provenance dans [data-sources.md](data-sources.md).

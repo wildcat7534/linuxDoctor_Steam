@@ -1,41 +1,37 @@
 # Feuille de route
 
-Cette feuille de route décrit l’ordre des prochains travaux, sans date contractuelle. Les éléments déjà livrés sont synthétisés dans [releases.md](releases.md) et les idées exploratoires dans [future-lab.md](future-lab.md).
+La version 1.1.0 et son Future Lab vivant sont livrés. Chaque cycle suivant doit compléter le parcours **diagnostiquer → expliquer → agir → mesurer** sans élargir silencieusement les données confiées au copilote local.
 
-## 1.1 — Expliquer si Ubuntu est prêt à jouer
+## 1.2 — Gaming Readiness et session expliquée
 
 - identifier la provenance de Steam et ses runtimes ;
-- vérifier les fondations Vulkan 64/32 bits sans lancer de rendu trompeur ;
-- relever GameMode, MangoHud, Gamescope, DXVK/VKD3D-Proton et leur contexte utile ;
-- relier manettes, règles `steam-devices` et test Steam Input sans promettre la compatibilité d’un jeu ;
-- présenter chaque recommandation avec fait, impact, limite et prochaine étape.
+- vérifier Vulkan 64/32 bits, GameMode, MangoHud, Gamescope, DXVK et VKD3D-Proton ;
+- relier manettes, règles `steam-devices` et test Steam Input ;
+- démarrer volontairement une session de mesure liée à un jeu ;
+- ajouter température, fréquence, GPU, VRAM et pression mémoire selon les API disponibles ;
+- corréler lancement, compilation de shaders, réseau et stockage sur une timeline ;
+- comparer deux sessions locales, par exemple avant et après une action.
 
-## 1.2 — Mesures Future Lab
+Une extension du contexte IA constitue une fonction distincte : elle devra afficher précisément quelles données supplémentaires sont capturées. Le copilote 1.1.0 reste limité à un seul instantané Future Lab et à ses constats qualitatifs.
 
-- calculer des débits CPU, disque et réseau à partir de deux instantanés horodatés ;
-- ajouter températures, pression mémoire et GPU seulement avec une source locale robuste ;
-- construire une timeline bornée et volontaire, sans collecte permanente ;
-- conserver le mode inconnu quand la source manque ou demande des privilèges.
+## 1.3 — Connaissance gaming synchronisée
 
-## 1.3 — Connaissance connectée vérifiable
+- publier une base signée avec manifeste, expiration et retour à la version précédente ;
+- synchroniser les fiches Ubuntu, pilotes, Proton et jeux depuis des sources officielles ;
+- rapprocher une fiche des versions réellement observées ;
+- avertir quand une information pertinente a changé depuis la dernière analyse ;
+- proposer une actualisation automatique configurable une fois la chaîne signée opérationnelle.
 
-- signer les versions de la base et vérifier la signature hors ligne ;
-- ajouter cache, expiration, retour à la version précédente et journal de provenance ;
-- permettre les modes jamais et manuel ; l’automatique reste bloqué tant que ces garanties ne sont pas complètes ;
-- rapprocher une fiche d’un jeu, d’une version de Proton et d’un pilote sans transformer une possibilité en panne détectée.
+## 2.0 — Assistant Gaming Linux
 
-## 2.0 — Diagnostic avancé optionnel
+- recherche conversationnelle dans le diagnostic et la documentation avec consentement séparé ;
+- profils d’optimisation expliqués pour écran, pilote et type de jeu ;
+- catalogue d’actions testées, simulables et vérifiables ;
+- modules versionnés pour les nouveaux fournisseurs GPU, plateformes et périphériques ;
+- export d’un dossier d’assistance expurgé pour faciliter un ticket Steam, Proton ou pilote.
 
-- vue réseau par processus sans scan actif par défaut ;
-- journaux Steam, Flatpak, noyau et services avec filtrage local ;
-- modèle local facultatif pour résumer, jamais pour décider ou exécuter ;
-- architecture de plugins versionnée si plusieurs modules indépendants en justifient le coût.
+## Critères de sortie
 
-## Critères de sortie communs
+Une fonction sort lorsqu’elle répond à une question gaming précise, respecte son budget de ressources, indique le niveau de certitude, compile en C17 strict et passe les tests automatisés ainsi que la validation responsive. Une opération système doit en plus expliquer ses privilèges et vérifier son résultat ; une fonction IA doit borner et afficher son contexte exact.
 
-- collecte en lecture seule par défaut et dégradation gracieuse ;
-- signal local testable, niveau de certitude et limite documentés ;
-- aucune donnée personnelle envoyée ;
-- budget de temps, mémoire et volume de données borné ;
-- compilation C17 stricte, tests automatisés et validation de l’interface ;
-- documentation canonique mise à jour sans recopier l’historique des versions.
+Les fonctions publiées sont dans [releases.md](releases.md) et la conception livrée de Future Lab dans [future-lab.md](future-lab.md).

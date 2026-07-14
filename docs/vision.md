@@ -1,46 +1,56 @@
 # Vision — Linux Doctor
 
-Linux Doctor est l’assistant de référence pour transformer un PC Ubuntu en machine de jeu fiable. Il observe les fondations locales, explique ce qui compte pour Steam, Proton, les manettes et GeForce NOW, puis propose une prochaine étape compréhensible sans modifier la machine à la place de l’utilisateur.
+Linux Doctor veut devenir le premier outil installé après Steam sur Ubuntu 26.04. Sa promesse ne s’arrête plus au constat : **diagnostiquer, expliquer, agir et mesurer le résultat** depuis une interface pensée pour une personne qui veut jouer, pas administrer Linux à plein temps.
 
-## Promesse
+## Promesse utilisateur
 
-En quelques minutes, une personne doit pouvoir répondre à trois questions :
+En quelques minutes, une personne doit pouvoir répondre à quatre questions :
 
-1. **Puis-je jouer dans de bonnes conditions ?**
-2. **Quel point mérite mon attention en premier ?**
-3. **Pourquoi cela compte-t-il et que puis-je vérifier sans risque ?**
+1. **Mon PC est-il prêt pour jouer ?**
+2. **Qu’est-ce qui limite réellement mon expérience ?**
+3. **Pourquoi Linux Doctor arrive-t-il à cette conclusion ?**
+4. **Quelle action puis-je effectuer maintenant et comment vérifier son effet ?**
 
-Le bilan court et illustré vient avant les inventaires. Chaque alerte relie un fait observé, son impact gaming, sa limite et une recommandation. Les détails techniques restent disponibles à la demande.
+Le bilan illustré répond d’abord. Les preuves, limites et détails techniques restent disponibles à la demande. Future Lab complète ce bilan avec des mesures vivantes, afin de relier une action à un changement visible.
 
-## Principes
+## Des responsabilités visibles
 
-- **Gaming first** : chaque fonction doit améliorer la préparation, la compréhension ou la stabilité d’un PC de jeu.
-- **Local first** : l’analyse fonctionne hors ligne, sans télémétrie ni envoi du rapport.
-- **Honnête** : confirmé, probable et hypothèse ne sont jamais confondus.
-- **Pédagogique** : l’utilisateur ressort plus autonome, pas seulement avec un score.
-- **Conservateur** : diagnostic avant réparation ; aucune action privilégiée implicite.
-- **Léger** : moteur C17 et interface HTML/CSS/JavaScript sans framework lourd.
+```text
+Observations locales ──> Diagnostic Engine ──> rapport et recommandations
+Sources officielles ───> Knowledge Engine  ──> contexte gaming du tableau de bord
+
+Snapshot Future Lab ──> constats qualitatifs déterministes
+                                      │
+                                      └─> assistant local optionnel
+                                            reformulation courte
+```
+
+- Le **Diagnostic Engine** C17 reste déterministe : mêmes faits, même diagnostic.
+- Le **Knowledge Engine** apporte des informations datées sur Ubuntu, Wayland, pilotes, Steam, Proton, contrôleurs et jeux.
+- Le **LLM local 1.1.0** reformule uniquement les constats qualitatifs d’un instantané Future Lab capturé au clic. Il ne reçoit pas les deux autres moteurs.
+
+Cette séparation permet une explication naturelle sans rendre le score opaque ni exposer tout le rapport au modèle. L’assistant est une capacité supplémentaire ; le diagnostic complet fonctionne aussi sans lui.
+
+## Gaming First
+
+Chaque fonction doit améliorer au moins un moment du parcours de jeu : installation, lancement, stabilité, fluidité, image, audio, contrôleur, réseau ou stockage. Les priorités sont Ubuntu 26.04 LTS, GNOME 50+, Wayland, Vulkan, HDR, VRR, Gamescope, GameMode, MangoHud, Proton, DXVK, VKD3D-Proton, Steam Runtime et Steam Input.
+
+Linux Doctor doit pouvoir dire, preuves à l’appui :
+
+- « ton pilote et tes chargeurs Vulkan sont cohérents » ;
+- « GameMode manque, voici le bénéfice possible et l’action proposée » ;
+- « ce jeu est associé à un problème Wayland connu sur cette version » ;
+- « ta manette est détectée, voici le test Steam Input à effectuer » ;
+- « ce pic de mémoire ou de disque coïncide avec ton lancement de jeu ».
 
 ## Plateforme de référence
 
-J'aimerais que Linux Doctor ne soit pas seulement **compatible** avec Ubuntu 26.04, mais qu'il devienne **la référence** pour cette plateforme.
+Ubuntu 26.04 LTS, GNOME 50+ et Wayland forment la plateforme principale. À chaque évolution majeure, la veille vérifie les nouvelles capacités, les régressions, les pilotes et les réglages gaming utiles. Les autres distributions restent supportées lorsqu’elles exposent les mêmes signaux sans ralentir l’évolution de cette cible.
 
-Par exemple, à chaque nouvelle LTS ou nouvelle version de GNOME, le projet pourrait vérifier :
+Les technologies et leurs sources officielles sont centralisées dans la [veille technologique](technology-watch.md).
 
-* les nouvelles fonctionnalités disponibles ;
-* les régressions connues ;
-* les nouveaux réglages utiles pour le gaming ;
-* les changements de pilotes ou de bibliothèques.
+## Actions visibles et maîtrisées
 
-Ainsi, Linux Doctor évoluerait en même temps que l'écosystème Linux, au lieu de simplement réagir aux problèmes. Je trouve que ce serait une vraie force du projet. 🚀
+Linux Doctor peut proposer et orchestrer des actions lorsque leur résultat est vérifiable. Une action affiche son objectif, la commande ou l’opération, les privilèges nécessaires, le résultat attendu et la vérification finale. Les modifications privilégiées passent par un composant séparé ou le terminal ; il n’existe pas de réparation implicite déclenchée par une simple analyse.
 
-Ubuntu 26.04 LTS, GNOME 50+ et Wayland forment donc la cible prioritaire. Les technologies suivies, leurs priorités et leur cadence de révision sont centralisées dans la [veille technologique](technology-watch.md).
-
-## Ce que Linux Doctor n’est pas
-
-- un terminal déguisé ou un inventaire sans conclusion ;
-- un optimiseur automatique opaque ;
-- un service cloud qui collecte la machine ;
-- une garantie universelle qu’un jeu ou un périphérique fonctionnera.
-
-La réussite se mesure simplement : une personne ouvre le tableau de bord, comprend ses priorités et sait quelle vérification sûre effectuer ensuite.
+La réussite se mesure simplement : une personne comprend la priorité, choisit une action adaptée, voit son effet dans Future Lab ou dans le diagnostic suivant et ressort plus compétente.

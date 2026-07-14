@@ -1,80 +1,84 @@
 # Stockage et bibliothèques Steam
 
-Ce document fixe le périmètre du domaine stockage. L’état des versions appartient aux [versions livrées](releases.md), les règles générales à l’[architecture](architecture.md), et l’interface à [ui.md](ui.md).
+Le domaine stockage aide à comprendre, préparer et améliorer l’emplacement des jeux. Il rassemble les disques Ubuntu/Windows, les bibliothèques Steam, l’espace réellement disponible et les actions adaptées à chaque volume.
 
-## Objectif
-
-Linux Doctor aide à comprendre où se trouvent Ubuntu, Windows et les bibliothèques Steam, combien d’espace est réellement mesurable et pourquoi un volume est indisponible. Il commence toujours par l’observation ; aucune réparation, modification de `/etc/fstab` ou migration réelle n’est autorisée sans demande explicite et conception dédiée.
-
-## Socle livré en lecture seule
+## Capacités livrées
 
 Le rapport inventorie, lorsque la source locale le permet :
 
-- périphérique et disque parent ;
-- UUID et libellés ;
-- taille et système de fichiers ;
-- point de montage, lecture seule et accès en écriture ;
+- périphérique, disque parent, UUID et libellé ;
+- taille, système de fichiers, point de montage et état d’accès ;
 - espace utilisé et disponible pour les volumes montés ;
 - transport, caractère amovible et indicateurs Windows confirmés ;
 - bibliothèques Steam, jeux, outils/runtime et espace déclaré ;
-- simulation d’une sélection de jeux à déplacer, sans copie ni suppression.
+- sélection de jeux et estimation de leur déplacement.
 
-L’interface regroupe les partitions par disque, indique leur rôle probable uniquement à partir de faits explicites et replie les identifiants techniques. Une partition non montée a une occupation **inconnue**, jamais 0 %.
+L’interface regroupe les partitions par disque et montre d’abord rôle, capacité et accessibilité. Les identifiants techniques restent dans les détails. Une partition non montée affiche une occupation inconnue, car sa capacité ne permet pas de déduire son espace libre.
 
-## Sources et niveaux de certitude
+## Parcours utilisateur visé
 
-La collecte privilégie les formats structurés de `lsblk`, les informations de montage locales et les manifestes Steam. Toute conclusion est classée ainsi :
+```text
+Disque ou bibliothèque détecté
+        ↓
+rôle, état et impact gaming
+        ↓
+action adaptée avec aperçu
+        ↓
+confirmation et exécution séparée
+        ↓
+nouvelle analyse du volume et de Steam
+```
 
-- **confirmée** : signal local direct et non ambigu ;
-- **probable** : plusieurs indices cohérents, avec limite affichée ;
-- **inconnue** : données absentes ou contradictoires.
+Le diagnostic n’est donc pas une fin : il prépare une action précise et les preuves permettant d’en contrôler le résultat.
 
-Le nom `/dev/sdX` n’est jamais considéré stable. Les UUID servent à reconnaître un volume, sans justifier à eux seuls une action.
+## Niveaux de preuve
 
-## Garde-fous
+- **confirmé** : signal local direct et non ambigu ;
+- **probable** : plusieurs indices cohérents avec limite affichée ;
+- **inconnu** : données absentes ou contradictoires.
 
-- Ne rien monter, réparer, reformater ou convertir au lancement.
-- Ne jamais lancer toute l’application en administrateur.
-- Protéger les composants Windows confirmés des suggestions automatiques.
-- Ne pas interpréter l’absence de montage comme un disque vide ou défectueux.
-- Ne pas employer `system()` ni concaténer des arguments non validés pour une future action.
-- Toute future action devra être expliquée, simulable, confirmée, journalisée, vérifiée et réversible lorsque possible.
+Les UUID servent à reconnaître un volume ; `/dev/sdX` peut changer d’un démarrage à l’autre. Un contenu Windows confirmé reçoit une protection explicite dans toute proposition de modification.
 
-`ntfsfix` ne doit jamais être décrit comme l’équivalent de `chkdsk`. Une erreur NTFS peut venir d’un volume marqué dirty, d’une hibernation, d’un arrêt incorrect, d’options de montage ou d’un problème matériel ; Linux Doctor ne doit pas choisir une cause sans preuve.
+## Cycle 1.2 — Diagnostic actionnable
 
-## Cas de référence à conserver
+- vérifier l’entrée `/etc/fstab` correspondante et expliquer les options de montage ;
+- relier les erreurs pertinentes du journal à un UUID ;
+- afficher pilote de système de fichiers, SMART et température quand disponibles ;
+- détecter la provenance de Steam et les bibliothèques devenues indisponibles ;
+- vérifier `compatdata`, `shadercache`, Workshop et chemins cassés ;
+- calculer source, destination, marge de sécurité et durée estimée d’une migration ;
+- générer un plan d’action vérifiable plutôt qu’une simple alerte.
 
-- Un disque NTFS qui remonte après `ntfsfix` mais échoue au démarrage suivant : rechercher la cause récurrente avant de proposer une commande.
-- Un second SSD non monté : produire un diagnostic distinct, sans généraliser le premier cas.
-- Un NVMe NTFS à protéger : permettre d’ignorer localement toute recommandation future de réparation, migration ou conversion.
-- Une partition EFI, swap ou récupération très petite : la rendre visible sans laisser croire que sa largeur graphique est exacte.
+## Cycle 1.3 — Actions Steam
 
-## Évolution prévue
+- ouvrir le gestionnaire de stockage Steam sur la bonne bibliothèque ;
+- préparer la création d’un dossier de bibliothèque avec ses prérequis ;
+- suivre une migration déclenchée par Steam et vérifier l’espace après l’opération ;
+- proposer le remontage d’un volume connu via une action privilégiée dédiée ;
+- comparer l’état avant/après dans l’historique local.
 
-### 1. Diagnostic enrichi
+## Actions système dédiées
 
-- présence et cohérence d’une entrée `/etc/fstab`, en lecture seule ;
-- pilote de système de fichiers et options de montage ;
-- erreurs pertinentes du journal, bornées et expliquées ;
-- santé SMART et température si les outils sont présents ;
-- historique minimal des échecs, relié à un UUID stable.
+Une réparation de système de fichiers, une modification de `/etc/fstab` ou une migration gérée directement par Linux Doctor aura son propre workflow : aperçu, sauvegarde utile, élévation minimale, confirmation explicite, journal d’exécution et contrôle final. L’analyse seule ne déclenche aucune de ces opérations.
 
-### 2. Préparation Steam
+`ntfsfix` n’est pas l’équivalent de `chkdsk`. Le workflow NTFS devra distinguer volume dirty, hibernation Windows, options de montage et problème matériel avant d’afficher l’action appropriée.
 
-- détecter la provenance de Steam et ses bibliothèques indisponibles ;
-- vérifier `compatdata`, `shadercache`, Workshop et chemins cassés sans lire le contenu personnel ;
-- estimer une migration en conservant une marge de sécurité sur la source et la destination ;
-- déléguer toute migration réelle au gestionnaire de stockage Steam tant qu’un moteur transactionnel n’existe pas.
+## Scénarios de référence
 
-### 3. Actions éventuelles, hors périmètre actuel
+- disque NTFS qui échoue de nouveau après un redémarrage ;
+- second SSD présent mais non monté ;
+- NVMe Windows à exclure des actions ;
+- partition EFI, swap ou récupération minuscule ;
+- bibliothèque Steam absente après changement de montage ;
+- destination trop petite ou source trop pleine pour déplacer un jeu.
 
-Une action de montage ou de réparation exigerait un helper minimal, une élévation séparée, des arguments strictement validés et un mode simulation. Une modification de `/etc/fstab` exigerait en plus sauvegarde, validation et retour arrière. Ces fonctions ne doivent pas être implémentées implicitement à partir de cette feuille de route.
+## Critères de sortie
 
-## Critères d’acceptation
+- fixtures disque simple, multi-partitions, non monté, accès restreint, amovible et dual boot ;
+- espace libre inconnu plutôt que déduit pour un volume inaccessible ;
+- plan, privilèges et résultat attendu visibles avant une action ;
+- aucune modification déclenchée pendant une analyse ;
+- reprise ou retour arrière définis pour une opération interruptible ;
+- compilation C17 stricte et validation responsive.
 
-- fixtures disque simple, multi-partitions, non monté, lecture seule, amovible et dual boot ;
-- absence de faux espace libre pour un volume inaccessible ;
-- aucune écriture système pendant la collecte ou la simulation ;
-- rapport utilisable quand `lsblk`, Steam ou une information optionnelle manque ;
-- tests C17 stricts et vérification responsive de l’interface ;
-- limites visibles à côté des valeurs concernées.
+Les fonctions publiées sont suivies dans [releases.md](releases.md), le contrat général d’action dans [architecture.md](architecture.md) et l’interface dans [ui.md](ui.md).

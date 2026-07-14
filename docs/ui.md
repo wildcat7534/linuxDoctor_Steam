@@ -1,55 +1,83 @@
 # Interface
 
-L’interface aide une personne non spécialiste à préparer Ubuntu pour jouer. Elle montre d’abord un bilan illustré, puis les détails vérifiables à la demande ; elle ne ressemble ni à une sortie de terminal ni à une liste infinie.
+Linux Doctor possède deux espaces complémentaires : le **tableau de bord**, qui hiérarchise l’état du PC, et **Future Lab**, une fenêtre autonome pour suivre les mesures et explorer les explications locales.
 
-## Hiérarchie
+## Tableau de bord
 
-1. **Bilan général** : date, score expliqué, problèmes et avertissements.
-2. **Petites victoires** : fondations déjà prêtes pour jouer.
-3. **Catégories** : Stockage, Gaming, Graphismes, Mises à jour, Applications et Future Lab.
-4. **Petit bilan de la catégorie** : quatre faits courts avec icônes et portée du score.
-5. **Détails** : inventaires, preuves et recommandations repliables.
+La lecture suit un chemin court :
 
-Une valeur inconnue apparaît comme telle, jamais comme 0 %. La couleur est toujours accompagnée d’une icône et d’un texte.
+1. bilan général, date et état de complétude ;
+2. priorités à traiter et petites victoires ;
+3. catégories Gaming First ;
+4. quatre faits essentiels par catégorie ;
+5. preuves, inventaires et actions dans des volets repliables.
 
-## Interactions communes
+Une valeur inconnue apparaît comme telle. Chaque couleur est accompagnée d’une icône et d’un texte ; chaque score indique ce qui l’a fait monter ou baisser.
 
-- clavier, contraste, focus visible et mise en page mobile ;
-- bouton **Pourquoi ?** avec observé, importance, impact et prochaine étape ;
+## Fenêtre Future Lab 1.1.0
+
+`future-lab.html` s’ouvre depuis une carte d’appel visible dans le tableau de bord. Son identité visuelle cyan/violet évoque un cockpit gaming tout en conservant contraste, hiérarchie et sobriété des mouvements.
+
+La fenêtre contient :
+
+- un bandeau de source avec horodatage et état live/statique ;
+- cinq cartes pour CPU, charge, mémoire, réseau et disques ;
+- des valeurs instantanées et unités accessibles hors Canvas ;
+- une timeline de 60 points par défaut, réglable à 30 ou 120 ;
+- des détails repliables par interface ou périphérique ;
+- une zone Assistant local et les constats déterministes utilisés ;
+- un lien clair pour revenir au tableau de bord.
+
+Le premier snapshot initialise les compteurs. Les taux apparaissent au point suivant seulement si schéma, démarrage, topologie et identités correspondent. Un fichier live ancien est rejeté ; une interruption rend la fraîcheur visible au lieu de prolonger artificiellement les courbes.
+
+La carte Réseau porte le libellé **Toutes les interfaces**. Elle avertit qu’une interface physique et ses couches virtuelles peuvent comptabiliser le même trafic.
+
+## Assistant local
+
+La zone IA distingue trois états : **modèle absent**, **chargement** et **prêt localement**. Elle indique le modèle actif, son exécution WebGPU ou WASM et le fait que la réponse est une reformulation. Le consentement puis le clic sur l’analyse précèdent tout chargement en mémoire ; un Web Worker garde le cockpit utilisable pendant l’inférence.
+
+Le clic fige l’instantané courant. La liste **Faits utilisés pour cette analyse** montre les constats déterministes associés ; le modèle reçoit leurs versions qualitatives sans chiffres et la question de l’utilisateur. La timeline, le rapport de diagnostic, les preuves et la base gaming ne lui sont pas transmis.
+
+Une réponse contenant un chiffre, une commande ou un texte extérieur aux mesures est écartée. L’interface réaffiche alors la lecture factuelle ; l’assistant ne propose et ne lance aucune commande.
+
+Le bouton de préparation renvoie vers `scripts/setup-local-ai.sh`. Le modèle ne se télécharge ni ne se charge silencieusement : l’utilisateur voit la taille approximative et choisit d’activer cette capacité.
+
+## Actions
+
+Une action visible emploie toujours le même composant :
+
+- **Pourquoi ?** relie le fait à l’impact gaming ;
+- **Préparer** affiche la commande ou l’opération et les prérequis ;
+- **Lancer/Copier** utilise le canal réellement disponible ;
+- **Vérifier** relance la mesure ou le diagnostic associé ;
+- **Résultat** indique succès, échec ou état encore inconnu.
+
+Le mot de passe `sudo` reste saisi directement dans le terminal ou par un helper dédié. Ces actions du tableau de bord sont indépendantes de l’assistant Future Lab.
+
+## Domaines actuels
+
+### Stockage
+
+Les partitions sont regroupées par disque physique. Capacité, rôle, état de montage et occupation mesurable apparaissent d’abord ; UUID, transport et périphérique sont dans les détails. La proportion visuelle distingue la taille des partitions de leur taux de remplissage.
+
+### Gaming
+
+- contour animé pour le comparatif **100 h de jeu** ;
+- profils GeForce NOW, PC moyen et PC haut de gamme visuellement distincts ;
+- paiement mensuel, annuel d’avance, équivalent mensuel, électricité et économie ;
+- jeux et icônes visibles par défaut, outils Steam dans un volet séparé ;
+- familles de manettes et repère Valve/Steam ;
+- version, date et provenance de la base gaming.
+
+### Mises à jour APT
+
+Un bilan précède les candidats prêts, phasés, différés ou retenus. « À quoi sert ce paquet ? » vient avant la description technique anglaise repliée. La commande `scripts/refresh-updates.sh` est copiable et son résultat apparaît dans l’analyse suivante.
+
+## Qualité d’interaction
+
+- navigation clavier, focus visible et responsive mobile ;
 - liens externes dans un nouvel onglet ;
-- bouton « ↑ Haut » visible après le début du défilement ;
-- animations non clignotantes et désactivées avec `prefers-reduced-motion` ;
-- commandes visibles, sélectionnables et copiées via l’API moderne ou un secours local.
-
-Le navigateur ne lance aucune commande. Il affiche la procédure à exécuter volontairement dans un terminal.
-
-## Stockage
-
-Les partitions sont regroupées par disque physique. Une première carte montre capacité connue, proportion relative, rôle et accessibilité. L’ouverture du disque révèle chaque partition ; UUID, transport et périphérique restent repliés.
-
-La longueur d’un segment représente une proportion, avec une largeur minimale pour les partitions minuscules. L’espace non partitionné et l’occupation d’un volume non monté restent inconnus. Un contenu Windows confirmé est protégé et expliqué.
-
-## Gaming
-
-- Le contour animé indique clairement que le comparatif porte sur **100 h de jeu**.
-- Les profils GeForce NOW, PC moyen et PC haut de gamme ont une couleur et une icône distinctes.
-- GeForce NOW sépare paiement mensuel, paiement annuel d’avance, équivalent mensuel, électricité et économie annuelle.
-- Les jeux Steam et leurs icônes locales sont visibles par défaut ; Proton, runtimes et outils sont dans un volet distinct.
-- Les manettes reçoivent un repère de famille ; le logo Steam local apparaît pour Valve/Steam.
-- La base gaming montre version, date, origine et commande manuelle de mise à jour avant ses fiches détaillées.
-
-Les estimations de puissance restent des hypothèses modifiables, jamais des mesures de la prise. Les tarifs sont datés et reliés à leur [source](data-sources.md).
-
-## Mises à jour APT
-
-La page commence par un bilan des candidats prêts, phasés, différés, retenus ou inconnus. La liste complète reste repliée. Pour chaque paquet, « À quoi sert ce paquet ? » précède sa description technique, souvent anglaise, elle-même repliée.
-
-`./scripts/refresh-updates.sh` est copié depuis l’interface puis exécuté dans un terminal. `sudo` y demande directement le mot de passe ; Linux Doctor ne le lit, ne le transmet et ne le conserve jamais. Cette action actualise les index, sans installer de paquet.
-
-## Future Lab
-
-La première vue doit résumer CPU, charge, mémoire, réseau et disques avec des unités explicites. Les compteurs cumulés portent un libellé « depuis le démarrage » et ne sont pas dessinés comme des débits. Les longues listes d’interfaces et de périphériques restent repliées.
-
-## Historique
-
-L’historique 1.0 compare uniquement le score précédent et le remplissage de la partition racine. Il possède un état dédié pour la première analyse ou un score incomplet ; l’identification de diagnostics apparus ou résolus reste une évolution future. Voir le [périmètre réellement conservé](history.md).
+- bouton de retour en haut visible pendant les longues pages ;
+- commandes sélectionnables avec copie moderne et solution de repli ;
+- animations non clignotantes, réduites avec `prefers-reduced-motion` ;
+- chiffres et états accessibles même lorsqu’un graphique ne peut pas être rendu.

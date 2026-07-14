@@ -1,34 +1,50 @@
 # Linux Doctor
 
-Linux Doctor aide une personne ordinaire à transformer Ubuntu en machine de jeu fiable. Il vérifie les fondations locales de Steam, Proton, des manettes, de GeForce NOW, du graphisme et du stockage, puis explique quoi regarder et pourquoi cela compte.
+Linux Doctor transforme Ubuntu 26.04 en poste de jeu compréhensible, mesurable et simple à améliorer. Il rassemble l’état de Steam, Proton, des manettes, du graphisme, des mises à jour et du stockage, puis relie chaque constat à son impact gaming.
 
-## Version 1.0
+## Version stable : 1.1.0
 
-- bilans courts et illustrés avant les inventaires détaillés ;
-- partitions regroupées par disque, rôles lisibles et détails techniques repliés ;
-- jeux Steam avec leurs icônes locales, séparés de Proton et des runtimes ;
-- manettes reconnues par famille, avec repère Steam/Valve ;
+- bilan illustré avant les inventaires détaillés ;
 - graphismes, session Wayland/X11 et fondations Vulkan/OpenGL ;
-- simulation APT locale, rôle des paquets et commande d’actualisation explicite ;
-- budget GeForce NOW sur 100 h : mensuel, annuel payé d’avance, électricité et économie ;
-- base gaming versionnée, mise à jour manuellement puis validée avant installation ;
-- premier Future Lab en lecture seule : CPU, charge, mémoire, réseau et activité disque brute ;
-- historique local optionnel sur 30 analyses compatibles.
+- jeux Steam avec leurs icônes, séparés de Proton et des runtimes ;
+- manettes reconnues par famille, avec repère Steam/Valve ;
+- partitions regroupées par disque, rôles lisibles et détails repliables ;
+- simulation APT, rôle des paquets et actualisation des index guidée ;
+- budget GeForce NOW sur 100 h, avec abonnements mensuels et annuels ;
+- base gaming versionnée, datée et reliée aux sources officielles ;
+- historique local sur 30 analyses compatibles ;
+- fenêtre Future Lab autonome avec graphiques CPU, charge, mémoire, réseau et disque ;
+- flux local actualisé chaque seconde et timeline de 60 points par défaut, 120 au maximum ;
+- copilote Gemma 3 1B int8 facultatif, exécuté localement dans un Worker du navigateur.
 
-Une analyse normale ne contacte pas Internet. Linux Doctor ne monte aucun volume, ne lance pas `ntfsfix`, ne modifie pas `/etc/fstab`, n’installe pas de paquet et ne déplace aucun jeu. Une donnée indisponible reste inconnue.
+Le copilote Future Lab reformule uniquement les constats qualitatifs calculés à partir de l’instantané capturé au clic. Il ne reçoit ni la timeline, ni les diagnostics du rapport, ni leurs preuves, ni la base gaming. Il ne produit pas de chiffres et ne propose aucune commande ; une réponse qui enfreint ces règles est écartée.
 
 ## Lancer
 
-Un compilateur C17 et `make` sont nécessaires.
+Un compilateur C17, `make` et Python 3 sont nécessaires.
 
 ```sh
-make run
 ./scripts/serve.sh
 ```
 
-Le rapport est écrit dans `frontend/report.json`, puis l’interface est disponible sur `http://127.0.0.1:4545`. `make run` active explicitement l’historique local ; une seconde analyse compatible permet d’afficher une comparaison.
+Ce point d’entrée régénère `frontend/report.json`, active l’historique local, démarre automatiquement le collecteur Future Lab et sert l’interface sur `http://127.0.0.1:4545`. Son arrêt ferme aussi le collecteur live.
 
-Pour compiler et tester sans lancer l’interface :
+Pour produire uniquement le rapport, sans serveur ni flux live :
+
+```sh
+make run
+```
+
+`scripts/refresh-future-lab.sh` sert au lancement autonome du flux, par exemple pour le développer séparément. Son verrou refuse un second collecteur concurrent :
+
+```sh
+./scripts/refresh-future-lab.sh
+./scripts/refresh-future-lab.sh --once
+```
+
+La fenêtre Future Lab rejette un fichier live ancien ou incompatible. Elle n’affiche un débit que si deux mesures appartiennent au même schéma, au même démarrage et à la même topologie observée.
+
+Pour compiler et tester :
 
 ```sh
 make clean
@@ -36,9 +52,19 @@ make all
 make test
 ```
 
-## Actions volontaires
+## Assistant local facultatif
 
-Actualiser les index APT puis régénérer le rapport, sans installer de paquet :
+L’installation télécharge la révision épinglée de Gemma 3 1B int8 et Transformers.js 4.2.0 dans les ressources frontend locales :
+
+```sh
+./scripts/setup-local-ai.sh
+```
+
+Le modèle représente environ 1,05 Go avec son tokenizer. Il ne se charge en mémoire qu’après consentement et clic dans Future Lab. Après l’installation, l’inférence n’envoie ni mesure, ni question, ni réponse sur Internet.
+
+## Actions disponibles
+
+Actualiser les index APT puis régénérer le rapport :
 
 ```sh
 ./scripts/refresh-updates.sh
@@ -46,15 +72,15 @@ Actualiser les index APT puis régénérer le rapport, sans installer de paquet 
 
 `sudo` demande son secret directement dans le terminal. Linux Doctor ne le lit ni ne le conserve.
 
-Vérifier une base gaming publiée sans l’installer, puis l’installer dans les données XDG de l’utilisateur :
+Vérifier puis installer la dernière base gaming publiée :
 
 ```sh
 ./scripts/update-knowledge.sh --check
 ./scripts/update-knowledge.sh
 ```
 
-Cette seconde action n’utilise pas `sudo`. Le téléchargement est borné et la copie exacte est validée avant un remplacement atomique ; la version 1.0 ne possède toutefois pas encore de signature cryptographique.
+Le téléchargement est borné et validé avant remplacement de la copie utilisateur. L’analyse reste utilisable hors ligne et aucune donnée de la machine n’est envoyée.
 
 ## Documentation
 
-L’index [docs/README.md](docs/README.md) indique le document canonique de chaque sujet. Les règles de la base gaming sont dans [data/README.md](data/README.md).
+L’index [docs/README.md](docs/README.md) présente la 1.1.0 livrée et sépare les capacités actuelles des prochains cycles. Le format de la base gaming est documenté dans [data/README.md](data/README.md).

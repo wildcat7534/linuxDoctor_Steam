@@ -263,6 +263,30 @@ static void collect_game_icon(SteamGame *game, const char *client_root)
     (void)closedir(directory);
 }
 
+bool steam_app_is_tool(const char *appid, const char *name)
+{
+    static const char *const tool_appids[] = {
+        "228980", /* Steamworks Common Redistributables */
+        "1070560", /* Steam Linux Runtime */
+        "1391110", /* Steam Linux Runtime - Soldier */
+        "1493710", /* Steam Linux Runtime - Sniper */
+        "1628350" /* Steam Linux Runtime 3.0 */
+    };
+    size_t index;
+
+    if (appid != NULL) {
+        for (index = 0U; index < sizeof(tool_appids) / sizeof(tool_appids[0]); index++) {
+            if (strcmp(appid, tool_appids[index]) == 0) return true;
+        }
+    }
+    if (name == NULL) return false;
+    return strstr(name, "Proton") != NULL || strstr(name, "Steam Linux Runtime") != NULL ||
+        strstr(name, "Steam Runtime") != NULL ||
+        strstr(name, "Steamworks Common Redistributables") != NULL ||
+        strstr(name, "Steam Input Configs") != NULL ||
+        strstr(name, "Steam Controller Configs") != NULL || strcmp(name, "SteamVR") == 0;
+}
+
 static void collect_games(SteamInfo *steam, size_t library_index, const char *client_root)
 {
     SteamLibrary *library = &steam->libraries[library_index];
@@ -303,10 +327,16 @@ static void collect_games(SteamInfo *steam, size_t library_index, const char *cl
         collect_game_icon(game, client_root);
         game->size_bytes = strtoull(size, NULL, 10);
         game->library_index = library_index;
+        game->is_tool = steam_app_is_tool(game->appid, game->name);
         if (snprintf(manifest_path, sizeof(manifest_path), "%s/common/%s", steamapps, install_directory) < (int)sizeof(manifest_path) &&
             stat(manifest_path, &metadata) == 0 && S_ISDIR(metadata.st_mode)) game->directory_present = true;
-        library->game_count++;
-        library->game_bytes += game->size_bytes;
+        if (game->is_tool) {
+            library->tool_count++;
+            library->tool_bytes += game->size_bytes;
+        } else {
+            library->game_count++;
+            library->game_bytes += game->size_bytes;
+        }
     }
     (void)closedir(directory);
 }

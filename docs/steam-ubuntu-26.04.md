@@ -36,8 +36,14 @@ Les tickets Steam et Proton sont trop nombreux et spécifiques aux jeux pour êt
 
 Une incompatibilité anti-triche, un jeu qui ne démarre pas ou une régression Proton doit rester un diagnostic associé à un jeu et une version de Proton. Linux Doctor peut préparer les informations utiles et pointer vers le suivi concerné, mais ne doit pas affirmer qu'un PC est globalement « compatible avec tous les jeux Steam ».
 
-## Base locale 0.8
+## Base locale 0.9
 
 Les fiches de compatibilité sont conservées dans `data/gaming-knowledge.tsv`. Une fiche `game` utilise l'AppID Steam comme cible ; elle n'apparaît que si ce jeu est installé. Les fiches générales `steam`, `controller`, `gfn` et `ubuntu` suivent la même règle de pertinence locale.
 
 Chaque ajout doit préciser une source HTTPS et une date de révision. Une fiche ancienne peut guider une investigation, mais ne doit pas être présentée comme la preuve qu'un problème existe encore avec la version courante du jeu, de Proton ou du pilote.
+
+## Jeux et outils Steam
+
+Linux Doctor distingue les jeux des composants distribués par Steam. Les noms Proton, Steam Linux Runtime, Steam Runtime, Steamworks Common Redistributables, Steam Input Configs et SteamVR, ainsi que plusieurs AppID de runtime connus, sont classés comme outils. Leur taille reste comptabilisée séparément, mais ils ne sont ni proposés à la migration comme des jeux, ni associés à une fiche de compatibilité de jeu.
+
+Cette séparation est une heuristique locale : Valve peut ajouter ou renommer un composant. Un outil non reconnu doit être documenté et couvert par un test avant d'étendre la règle.

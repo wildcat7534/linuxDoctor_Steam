@@ -83,12 +83,14 @@ int main(void)
         .controller_name = "Steam Controller", .controller_count = 2U,
         .controllers = {{.name = "Steam Controller", .kind = "steam"},
             {.name = "Xbox Wireless Controller", .kind = "xbox"}},
-        .library_count = 1U, .game_count = 1U,
+        .library_count = 1U, .game_count = 2U,
         .libraries = {{.path = "/mnt/games/Steam", .filesystem = "ntfs", .writable = true,
-            .game_count = 1U, .game_bytes = 123U}},
+            .game_count = 1U, .game_bytes = 123U, .tool_count = 1U, .tool_bytes = 456U}},
         .games = {{.appid = "123", .name = "Test Game",
             .icon_path = "tests/fixtures/steam-home/.local/share/Steam/appcache/librarycache/4242/0123456789abcdef0123456789abcdef01234567.jpg",
-            .size_bytes = 123U, .directory_present = true}}};
+            .size_bytes = 123U, .directory_present = true},
+            {.appid = "1391110", .name = "Steam Linux Runtime - Soldier",
+                .size_bytes = 456U, .directory_present = true, .is_tool = true}}};
     VolumeInventory volumes = {.available = true, .count = 1U,
         .items = {{.path = "/dev/sdb2", .uuid = "test-uuid", .filesystem = "ntfs",
             .mountpoint = "/mnt/games", .size_bytes = 1000U, .available_bytes = 500U,
@@ -161,6 +163,10 @@ int main(void)
     assert(strstr(buffer, "Xbox Wireless Controller") != NULL);
     assert(strstr(buffer, "\"gfn_inventory\":{\"installed\":true") != NULL);
     assert(strstr(buffer, "Test Game") != NULL);
+    assert(strstr(buffer, "Steam Linux Runtime - Soldier") != NULL);
+    assert(strstr(buffer, "\"kind\":\"game\"") != NULL);
+    assert(strstr(buffer, "\"kind\":\"tool\"") != NULL);
+    assert(strstr(buffer, "\"tool_count\":1") != NULL);
     assert(strstr(buffer, "\"icon_data_uri\":\"data:image/jpeg;base64,") != NULL);
     assert(strstr(buffer, "\"gaming_knowledge\"") != NULL);
     assert(strstr(buffer, "Known fixture issue") != NULL);

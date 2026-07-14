@@ -17,6 +17,10 @@ int main(void)
     assert(strcmp(steam_controller_kind("8BitDo Ultimate Gamepad"), "8bitdo") == 0);
     assert(steam_controller_kind("Headset Consumer Control") == NULL);
     assert(steam_controller_kind("Gaming Mouse") == NULL);
+    assert(steam_app_is_tool("228980", "Common files"));
+    assert(steam_app_is_tool("1391110", "Steam Linux Runtime - Soldier"));
+    assert(steam_app_is_tool("999999", "Proton Experimental"));
+    assert(!steam_app_is_tool("4242", "Fixture Game"));
     assert(steam_collect(NULL, NULL, NULL, 0) == -1);
     assert(setenv("HOME", "tests/fixtures/steam-home", 1) == 0);
     assert(steam_collect(&steam, NULL, NULL, 0) == 0);
@@ -24,10 +28,15 @@ int main(void)
     if (steam.controller_detected) assert(steam.controller_count > 0U);
     if (steam.ubuntu_2604) assert(steam.ubuntu);
     assert(steam.library_count == 1U);
-    assert(steam.game_count == 1U);
-    assert(strcmp(steam.games[0].appid, "4242") == 0);
-    assert(steam.games[0].directory_present);
-    assert(strstr(steam.games[0].icon_path, "0123456789abcdef0123456789abcdef01234567.jpg") != NULL);
+    assert(steam.game_count == 2U);
+    assert(steam.libraries[0].game_count == 1U);
+    assert(steam.libraries[0].tool_count == 1U);
+    assert(strcmp(steam.games[0].appid, "1391110") == 0);
+    assert(steam.games[0].is_tool);
+    assert(strcmp(steam.games[1].appid, "4242") == 0);
+    assert(!steam.games[1].is_tool);
+    assert(steam.games[1].directory_present);
+    assert(strstr(steam.games[1].icon_path, "0123456789abcdef0123456789abcdef01234567.jpg") != NULL);
     assert(unsetenv("HOME") == 0);
     return 0;
 }

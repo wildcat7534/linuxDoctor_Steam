@@ -19,7 +19,7 @@ Le backend est un outil CLI, par exemple `linux-doctor --output report.json`. Le
 Le schéma V2 ajoute des blocs indépendants des diagnostics :
 
 - `storage_inventory.volumes` : partitions détectées, y compris celles qui ne sont pas montées ;
-- `steam_inventory.libraries`, `steam_inventory.games` et `steam_inventory.controllers` : bibliothèques Steam, manifests de jeux et manettes reconnues par leur nom noyau.
+- `steam_inventory.libraries`, `steam_inventory.games` et `steam_inventory.controllers` : bibliothèques Steam, manifests classés en jeux ou outils techniques, et manettes reconnues par leur nom noyau.
 - `graphics_inventory.devices` : cartes DRM, identifiants PCI et pilotes noyau exposés par sysfs ;
 - `graphics_inventory.session`, `vulkan` et `opengl` : contexte de session et présence des chargeurs locaux, sans test de rendu.
 - `updates_inventory` : fraîcheur des index APT, candidats, versions, origine, rôle local, paquets retenus et état `ready`, `phased`, `deferred` ou `unknown`.
@@ -41,6 +41,10 @@ L'inventaire APT V0.6 exécute deux simulations `apt-get` locales avec des argum
 En V0.7, le collecteur Steam cherche pour chaque AppID une petite icône JPEG déjà mise en cache par le client Steam. Seuls les fichiers réguliers au nom attendu et d'au plus 64 Kio sont retenus. Le rapport encode leur contenu en URI `data:` : il ne publie ni chemin personnel, ni requête vers un CDN. Une icône générique est utilisée lorsque Steam ne possède pas d'image locale.
 
 En V0.8, l'inventaire des manettes expose un nom et une famille visuelle (`steam`, `xbox`, `playstation`, `nintendo`, `8bitdo` ou `generic`). La classification repose uniquement sur le nom déclaré au noyau, déduplique les interfaces d'un même Steam Controller et ne réalise aucun test d'entrée. Le frontend choisit les badges et icônes à partir de cette famille, sans inventer de compatibilité Steam Input.
+
+En V0.9, chaque manifeste Steam reçoit un `kind` (`game` ou `tool`). Les AppID connus des runtimes et les noms explicites comme Proton, Steam Linux Runtime, Steamworks Common Redistributables ou Steam Input Configs sont classés comme outils. Les bibliothèques exposent séparément `game_count`, `game_bytes`, `tool_count` et `tool_bytes`. Un outil n'est jamais retenu par le planificateur de migration ni rapproché d'une fiche de compatibilité de jeu. La classification reste volontairement prudente : un composant inconnu peut encore apparaître comme jeu jusqu'à l'ajout d'une règle testée.
+
+Les tarifs GeForce NOW de la V0.9 sont des données éditoriales datées du frontend, pas une collecte système ni un appel réseau au chargement. Ils sont accompagnés d'un lien vers la grille NVIDIA et combinés au coût électrique uniquement pour expliquer le budget de la durée saisie. Les jeux, l'accès Internet et les achats d'heures au-delà de l'enveloppe ne sont pas inclus.
 
 La base `data/gaming-knowledge.tsv` est une ressource locale versionnée. Le module C valide ses champs bornés et rapproche les cibles `game`, `steam`, `controller`, `gfn` ou `ubuntu` des observations locales. Le rapport n'exporte que les fiches pertinentes. Cette base apporte du contexte pédagogique ; elle ne remplace ni un test réel du jeu, ni la lecture d'un ticket récent, ni une vérification humaine de la date et de la source.
 

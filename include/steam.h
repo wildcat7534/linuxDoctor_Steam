@@ -25,7 +25,9 @@ typedef struct SteamLibrary {
     char filesystem[32];
     uint64_t available_bytes;
     uint64_t game_bytes;
+    uint64_t tool_bytes;
     size_t game_count;
+    size_t tool_count;
     bool mounted;
     bool writable;
 } SteamLibrary;
@@ -37,6 +39,7 @@ typedef struct SteamGame {
     uint64_t size_bytes;
     size_t library_index;
     bool directory_present;
+    bool is_tool;
 } SteamGame;
 
 typedef struct SteamInfo {
@@ -58,5 +61,6 @@ typedef struct SteamInfo {
 
 int steam_collect(SteamInfo *steam, const VolumeInventory *volumes, char *error, size_t error_size);
 const char *steam_controller_kind(const char *name);
+bool steam_app_is_tool(const char *appid, const char *name);
 
 #endif

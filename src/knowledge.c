@@ -53,7 +53,7 @@ static bool game_installed(const SteamInfo *steam, const char *appid)
 
     if (steam == NULL) return false;
     for (index = 0U; index < steam->game_count; index++) {
-        if (strcmp(steam->games[index].appid, appid) == 0) return true;
+        if (!steam->games[index].is_tool && strcmp(steam->games[index].appid, appid) == 0) return true;
     }
     return false;
 }

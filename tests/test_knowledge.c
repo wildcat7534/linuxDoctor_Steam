@@ -27,5 +27,11 @@ int main(void)
     assert(strcmp(knowledge.entries[0].target, "4242") == 0);
     assert(!knowledge.entries[1].relevant);
     assert(knowledge.entries[2].relevant);
+    steam.games[0].is_tool = true;
+    assert(gaming_knowledge_load(&knowledge, "tests/fixtures/gaming-knowledge.tsv",
+        &steam, &gfn, error, sizeof(error)) == 0);
+    assert(knowledge.relevant_count == 1U);
+    assert(!knowledge.entries[0].relevant);
+    assert(knowledge.entries[2].relevant);
     return 0;
 }

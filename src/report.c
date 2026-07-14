@@ -897,8 +897,9 @@ static int write_steam_inventory(FILE *stream, const SteamInfo *steam)
             fputs(",\"volume_path\":", stream) == EOF || json_write_string(stream, library->volume_path) != 0 ||
             fputs(",\"filesystem\":", stream) == EOF || json_write_string(stream, library->filesystem) != 0 ||
             fprintf(stream, ",\"available_bytes\":%" PRIu64 ",\"game_bytes\":%" PRIu64
-                ",\"game_count\":%zu,\"mounted\":%s,\"writable\":%s}",
-                library->available_bytes, library->game_bytes, library->game_count,
+                ",\"tool_bytes\":%" PRIu64 ",\"game_count\":%zu,\"tool_count\":%zu,\"mounted\":%s,\"writable\":%s}",
+                library->available_bytes, library->game_bytes, library->tool_bytes,
+                library->game_count, library->tool_count,
                 library->mounted ? "true" : "false", library->writable ? "true" : "false") < 0) return -1;
     }
     if (fputs("],\"games\":[", stream) == EOF) return -1;
@@ -908,6 +909,7 @@ static int write_steam_inventory(FILE *stream, const SteamInfo *steam)
         if (index > 0 && fputc(',', stream) == EOF) return -1;
         if (fputs("{\"appid\":", stream) == EOF || json_write_string(stream, game->appid) != 0 ||
             fputs(",\"name\":", stream) == EOF || json_write_string(stream, game->name) != 0 ||
+            fputs(",\"kind\":", stream) == EOF || json_write_string(stream, game->is_tool ? "tool" : "game") != 0 ||
             fprintf(stream, ",\"size_bytes\":%" PRIu64 ",\"library_index\":%zu,\"directory_present\":%s,\"icon_data_uri\":",
                 game->size_bytes, game->library_index, game->directory_present ? "true" : "false") < 0 ||
             write_game_icon_data(stream, game->icon_path) != 0 || fputc('}', stream) == EOF) return -1;

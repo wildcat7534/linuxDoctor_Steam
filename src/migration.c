@@ -30,7 +30,7 @@ void migration_plan_build(MigrationPlan *plan, const StorageInfo *storage,
     for (index = 0; index < steam->game_count && plan->game_count < MIGRATION_GAME_LIMIT; index++) {
         const SteamGame *game = &steam->games[index];
 
-        if (!game->directory_present || game->size_bytes == 0 ||
+        if (game->is_tool || !game->directory_present || game->size_bytes == 0 ||
             game->size_bytes > plan->destination_available_bytes - plan->selected_bytes) continue;
         plan->game_indexes[plan->game_count++] = index;
         plan->selected_bytes += game->size_bytes;
